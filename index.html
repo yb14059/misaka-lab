@@ -1,0 +1,1793 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#eceae6">
+<meta name="format-detection" content="telephone=no">
+<title>Misaka LAB · 代码实验场</title>
+<meta name="description" content="Misaka LAB 个人代码仓库：项目展示、站内在线预览与代码编辑，支持导入本地项目。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23eceae6'/%3E%3Crect x='6' y='7' width='20' height='4' fill='%23b5483c'/%3E%3Crect x='6' y='14' width='20' height='12' fill='%23141414'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#eceae6;
+    --panel:#f7f6f3;
+    --ink:#141414;
+    --ink-soft:#6f6d68;
+    --line:#c9c6bf;
+    --red:#b5483c;
+    --mono:"JetBrains Mono","SFMono-Regular",Consolas,"Courier New",monospace;
+    --sans:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--sans);color:var(--ink)}
+  /* dvh：移动端地址栏收起/展开时不会把布局顶出去；text-size-adjust：防止 iOS 横屏自动放大字号 */
+  @supports (height:100dvh){html,body{height:100dvh}}
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+  canvas#particles{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+  /* ============ 通用装饰 ============ */
+  .sq{width:6px;height:6px;background:var(--ink);position:absolute}
+  .hline{position:absolute;height:1px;background:var(--ink)}
+
+  /* ============ 封面 ============ */
+  #cover{
+    position:fixed;inset:0;z-index:2;
+    display:flex;align-items:center;justify-content:center;
+    transition:opacity .9s ease, transform .9s ease, filter .9s ease;
+  }
+  #cover.hidden{opacity:0;transform:scale(1.06);filter:blur(6px);pointer-events:none}
+  .cover-inner{display:flex;align-items:center;gap:70px;transform:translateX(-6%)}
+  .logo-wrap{position:relative;animation:floatY 5s ease-in-out infinite}
+  @keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+  .logo-wrap svg{display:block;filter:drop-shadow(0 14px 24px rgba(0,0,0,.18))}
+  .logo-sub{
+    margin-top:18px;font-family:var(--mono);font-size:12px;letter-spacing:.45em;
+    color:var(--ink-soft);text-transform:uppercase;text-align:center;
+  }
+  .cover-right{display:flex;flex-direction:column;gap:22px;max-width:340px}
+  .cover-title{font-size:34px;font-weight:800;letter-spacing:.06em;line-height:1.2}
+  .cover-title em{font-style:normal;color:var(--red)}
+  .cover-desc{font-size:14px;color:var(--ink-soft);line-height:1.9}
+  #enterBtn{
+    position:relative;width:200px;height:56px;border:none;cursor:pointer;
+    background:var(--ink);color:#fff;font-size:16px;letter-spacing:.35em;
+    font-family:var(--mono);text-indent:.35em;
+    transition:transform .25s ease, box-shadow .25s ease, background .25s;
+    clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);
+  }
+  #enterBtn:hover{transform:translateY(-3px);background:var(--red);box-shadow:0 12px 26px rgba(181,72,60,.35)}
+  #enterBtn::after{
+    content:"";position:absolute;right:10px;top:50%;width:8px;height:8px;
+    border-top:2px solid #fff;border-right:2px solid #fff;
+    transform:translateY(-50%) rotate(45deg);animation:nudge 1.4s ease-in-out infinite;
+  }
+  @keyframes nudge{0%,100%{right:10px}50%{right:5px}}
+  .cover-tag{font-family:var(--mono);font-size:11px;color:var(--ink-soft);letter-spacing:.3em}
+
+  /* ============ 主界面 ============ */
+  #main{
+    position:fixed;inset:0;z-index:1;
+    opacity:0;pointer-events:none;transform:translateY(24px);
+    transition:opacity 1s ease .15s, transform 1s ease .15s;
+  }
+  #main.show{opacity:1;pointer-events:auto;transform:translateY(0)}
+
+  /* 背景：仿 Rhine Lab 大厅 */
+  .lab-bg{position:absolute;inset:0;overflow:hidden;background:
+    linear-gradient(180deg,#f2f1ee 0%,#e9e7e2 60%,#e3e1dc 100%)}
+  .lab-bg .pillar{position:absolute;top:0;bottom:0;width:26px;
+    background:linear-gradient(90deg,rgba(0,0,0,.10),rgba(0,0,0,.02) 40%,rgba(0,0,0,.10));}
+  .lab-bg .glass{position:absolute;top:0;bottom:0;background:rgba(255,255,255,.45);
+    border-left:1px solid rgba(0,0,0,.08);border-right:1px solid rgba(0,0,0,.08)}
+  .lab-bg .bigletter{position:absolute;font-size:300px;font-weight:900;color:rgba(0,0,0,.045);
+    font-family:var(--mono);user-select:none;line-height:1}
+  .lab-bg .floor{position:absolute;left:0;right:0;bottom:0;height:26%;
+    background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.05) 100%);
+    border-top:1px solid rgba(0,0,0,.12)}
+  .lab-bg .redline{position:absolute;height:3px;background:rgba(181,72,60,.55);border-radius:2px}
+  .lab-bg .desk{position:absolute;background:rgba(0,0,0,.10)}
+  .lab-bg .desk::before{content:"";position:absolute;left:50%;top:100%;width:2px;height:40px;background:rgba(0,0,0,.14)}
+
+  /* UI 层 */
+  .ui{position:absolute;inset:0;display:flex;flex-direction:column;padding:26px 34px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:14px}
+  .brand{display:flex;align-items:center;gap:16px}
+  .brand svg{height:34px}
+  .brand .t1{font-weight:800;font-size:18px;letter-spacing:.08em}
+  .brand .t2{font-family:var(--mono);font-size:10px;letter-spacing:.3em;color:var(--ink-soft);margin-top:2px}
+  .top-status{display:flex;align-items:center;gap:22px;font-family:var(--mono);font-size:11px;color:var(--ink-soft);letter-spacing:.15em}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#3d9e5f;margin-right:6px;animation:blink 2s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+  #backBtn{
+    border:1px solid var(--ink);background:transparent;font-family:var(--mono);
+    font-size:11px;letter-spacing:.2em;padding:8px 16px;cursor:pointer;transition:.25s;
+  }
+  #backBtn:hover{background:var(--ink);color:#fff}
+
+  .body{flex:1;display:flex;gap:30px;padding-top:24px;min-height:0}
+
+  /* 侧栏：仓库分类 */
+  .sidebar{width:230px;display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+  .side-head{font-family:var(--mono);font-size:11px;letter-spacing:.3em;color:var(--ink-soft);margin-bottom:10px}
+  .cat{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:11px 14px;cursor:pointer;font-size:14px;letter-spacing:.05em;
+    border:1px solid transparent;transition:.2s;position:relative;
+  }
+  .cat:hover{border-color:var(--line);background:rgba(255,255,255,.6)}
+  .cat.active{background:var(--ink);color:#fff}
+  .cat .cnt{font-family:var(--mono);font-size:11px;opacity:.7}
+  .side-stat{margin-top:auto;border:1px solid var(--line);background:rgba(255,255,255,.55);padding:14px;font-family:var(--mono);font-size:11px;color:var(--ink-soft);line-height:2}
+  .side-stat b{color:var(--ink);font-size:15px}
+
+  /* 项目区 */
+  .content{flex:1;display:flex;flex-direction:column;min-width:0}
+  .content-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .content-title{font-family:var(--mono);font-size:12px;letter-spacing:.35em;color:var(--ink-soft)}
+  #search{
+    width:240px;padding:9px 14px;border:1px solid var(--line);background:rgba(255,255,255,.7);
+    font-family:var(--mono);font-size:12px;outline:none;transition:.2s;
+  }
+  #search:focus{border-color:var(--ink)}
+  .grid{
+    flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--card-w,260px),1fr));
+    gap:16px;padding:4px 8px 24px 4px;align-content:start;
+  }
+  .grid::-webkit-scrollbar{width:5px}
+  .grid::-webkit-scrollbar-thumb{background:var(--line)}
+  .card{
+    border:1px solid var(--line);background:rgba(255,255,255,.72);padding:var(--card-p,18px);
+    position:relative;transition:.25s;cursor:pointer;min-height:var(--card-mh,auto);
+    animation:cardIn .5s ease both;
+  }
+  @keyframes cardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  /* 缺角用伪元素「挖」出来，而不是 clip-path —— clip-path 会把 hover 的 box-shadow 一并裁掉 */
+  .card::after{
+    content:"";position:absolute;top:-1px;right:-1px;width:14px;height:14px;background:var(--bg);
+    clip-path:polygon(100% 0,0 0,100% 100%);pointer-events:none;z-index:0;
+  }
+  /* 搜索/筛选时关闭入场动画，避免每敲一个字整屏重播 */
+  .grid.no-anim .card{animation:none}
+  .card:hover{background:#fff;transform:translateY(-4px);box-shadow:0 14px 30px rgba(0,0,0,.10);border-color:var(--ink)}
+  .card::before{content:"";position:absolute;top:0;left:0;width:22px;height:3px;background:var(--red)}
+  .card h3{font-size:15px;margin-bottom:8px;letter-spacing:.03em;display:flex;align-items:center;gap:8px;min-width:0}
+  .card h3 svg{width:14px;height:14px;flex-shrink:0}
+  .card h3 .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .card .meta{display:flex;align-items:center;gap:12px;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--ink-soft);flex-wrap:wrap}
+  .card .meta span{white-space:nowrap}
+  .card .ctag{border:1px solid var(--line);padding:1px 8px;font-size:10px;letter-spacing:.1em}
+  .card p{font-size:var(--card-f,12.5px);color:var(--ink-soft);line-height:1.75;min-height:44px;word-break:break-all}
+  .lang-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:-1px}
+  .card .op-btn{position:absolute;top:9px;width:20px;height:20px;line-height:18px;text-align:center;z-index:2;
+    border:1px solid var(--line);background:rgba(255,255,255,.9);color:var(--ink-soft);font-size:13px;cursor:pointer;opacity:0;transition:.2s;font-family:var(--mono);padding:0}
+  .card .edit-btn{right:58px}
+  .card .code-btn{right:34px}
+  .card .del-btn{right:10px}
+  .card:hover .op-btn{opacity:1}
+  .card .edit-btn:hover{background:var(--ink);color:#fff}
+  .card .del-btn:hover{background:var(--red);border-color:var(--red);color:#fff}
+  #adminBtn.on{background:var(--red);border-color:var(--red);color:#fff}
+  .cat .cat-op{margin-left:8px;font-family:var(--mono);font-size:12px;opacity:.3;transition:.2s}
+  .cat:hover .cat-op{opacity:1}
+  .cat .cat-op:hover{color:var(--red);font-weight:700}
+  .cat .cat-del{position:relative;top:auto;right:auto;width:auto;height:auto;line-height:1;margin-left:8px;opacity:.35;background:none;border:none}
+  .cat:hover .cat-del{opacity:1}
+  .cat .cat-del:hover{color:var(--red);font-weight:700}
+  .side-stat .add-btn{width:100%;margin-top:14px}
+
+  /* 封面标题行：左右黑点对称框住标题首行 */
+  .cover-title-row{display:flex;align-items:flex-start;gap:16px}
+  .sq-inline{width:9px;height:9px;background:var(--ink);flex-shrink:0;margin-top:16px}
+
+  /* 操作按钮 */
+  .add-btn{border:1px solid var(--ink);background:transparent;font-family:var(--mono);font-size:11px;letter-spacing:.12em;padding:8px 14px;cursor:pointer;transition:.2s;white-space:nowrap}
+  .add-btn:hover{background:var(--ink);color:#fff}
+  .add-btn.primary{background:var(--ink);color:#fff}
+  .add-btn.primary:hover{background:var(--red);border-color:var(--red)}
+  .content-head .actions{display:flex;gap:10px;align-items:center}
+
+  /* 项目预览 */
+  #preview{position:fixed;inset:0;z-index:5;background:var(--bg);display:flex;flex-direction:column;
+    opacity:0;visibility:hidden;transform:translateY(30px) scale(.985);
+    transition:opacity .45s cubic-bezier(.22,.61,.36,1),transform .45s cubic-bezier(.22,.61,.36,1),visibility .45s}
+  #preview.show{opacity:1;visibility:visible;transform:none}
+  .preview-top{display:flex;align-items:center;gap:16px;padding:14px 34px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.75)}
+  .preview-top .pname{font-weight:800;font-size:16px;letter-spacing:.04em}
+  .preview-top .pcat{font-family:var(--mono);font-size:10px;border:1px solid var(--line);padding:3px 10px;letter-spacing:.15em;color:var(--ink-soft)}
+  .preview-top .right{margin-left:auto;display:flex;gap:10px;align-items:center}
+  .pv-tabs{display:flex;border:1px solid var(--line)}
+  .pv-tab{font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:7px 14px;cursor:pointer;background:rgba(255,255,255,.75);transition:.2s;white-space:nowrap}
+  .pv-tab+.pv-tab{border-left:1px solid var(--line)}
+  .pv-tab.active{background:var(--ink);color:#fff}
+  .pv-tab:not(.active):hover{background:#fff}
+  #previewFrame{flex:1;border:none;background:#fff;width:100%}
+
+  /* 代码编辑器界面（仓库 → 代码 的过渡动画） */
+  #editor{position:fixed;inset:0;z-index:5;background:var(--bg);display:flex;flex-direction:column;
+    opacity:0;visibility:hidden;transform:translateY(34px) scale(.985);
+    transition:opacity .45s cubic-bezier(.22,.61,.36,1),transform .45s cubic-bezier(.22,.61,.36,1),visibility .45s}
+  #editor.show{opacity:1;visibility:visible;transform:none}
+  .ed-body{flex:1;display:flex;min-height:0;padding:16px 34px 26px;gap:16px}
+  .file-tree{width:230px;flex-shrink:0;border:1px solid var(--line);background:rgba(255,255,255,.6);overflow:auto;padding:8px 0}
+  .file-tree .ft-title{padding:8px 14px;font-family:var(--mono);font-size:10px;letter-spacing:.22em;color:var(--ink-soft)}
+  .file-tree .ft{padding:7px 14px;font-family:var(--mono);font-size:12px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:3px solid transparent;transition:.15s}
+  .file-tree .ft:hover{background:rgba(0,0,0,.06)}
+  .file-tree .ft.active{background:var(--ink);color:#fff;border-left-color:var(--red)}
+  .code-area{flex:1;display:flex;background:#1b1b1b;border:1px solid #000;min-width:0;overflow:hidden}
+  #gutter{width:54px;flex-shrink:0;background:#141414;color:#5f5d58;font-family:var(--mono);font-size:13px;line-height:20px;
+    padding:16px 10px 16px 0;text-align:right;overflow:hidden;user-select:none;white-space:pre}
+  #codeArea{flex:1;background:#1b1b1b;color:#e8e6e1;border:none;outline:none;padding:16px;
+    font-family:Consolas,"Courier New",monospace;font-size:13px;line-height:20px;resize:none;white-space:pre;overflow:auto}
+  /* 自动换行开启：代码按可见宽度折行，多行显示；行号列隐藏（折行后行号必然错位，宁缺勿错） */
+  #editor.wrap-on #codeArea{white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}
+  #editor.wrap-on #gutter{display:none}
+  /* 仓库列表在跳转时被“推后” */
+  #main.push{transform:scale(.975) translateY(-14px);opacity:.4;filter:blur(1px)}
+  /* 提示气泡 */
+  #toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%) translateY(20px);z-index:9;
+    background:var(--ink);color:#fff;font-family:var(--mono);font-size:12px;letter-spacing:.15em;padding:10px 22px;
+    display:flex;align-items:center;gap:14px;
+    opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #toast.has-act.show{pointer-events:auto}
+  #toastAct{display:none;border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:5px 12px;cursor:pointer;transition:.2s}
+  #toast.has-act #toastAct{display:inline-block}
+  #toastAct:hover{background:#fff;color:var(--ink)}
+
+  /* 环境告警条：本地存储 / IndexedDB 不可用时提示 */
+  #envWarn{display:none;position:fixed;left:0;right:0;top:0;z-index:10;background:var(--red);color:#fff;
+    font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-align:center;line-height:1.7;
+    padding:calc(8px + env(safe-area-inset-top)) 16px 8px}
+  #envWarn.show{display:block}
+
+  /* 弹窗 */
+  .modal-mask{position:fixed;inset:0;z-index:6;background:rgba(20,20,20,.45);display:none;align-items:center;justify-content:center}
+  .modal-mask.show{display:flex}
+  .modal{width:470px;max-width:92vw;background:var(--panel);border:1px solid var(--ink);padding:26px;position:relative;clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%)}
+  .modal::before{content:"";position:absolute;top:0;left:0;width:26px;height:4px;background:var(--red)}
+  .modal h3{font-size:17px;margin-bottom:16px;letter-spacing:.06em}
+  .modal label{display:block;font-family:var(--mono);font-size:11px;color:var(--ink-soft);letter-spacing:.15em;margin:12px 0 5px}
+  .modal input,.modal select,.modal textarea{width:100%;padding:9px 12px;border:1px solid var(--line);background:#fff;font-family:var(--sans);font-size:13px;outline:none;transition:.2s}
+  .modal input:focus,.modal select:focus,.modal textarea:focus{border-color:var(--ink)}
+  .modal textarea{resize:vertical;min-height:60px}
+  /* 弹窗里直接改文件内容：给足高度，等宽字体，按可见宽度折行 */
+  #fContent{min-height:180px;font-family:Consolas,"Courier New",monospace;font-size:13px;line-height:1.7;
+    white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}
+  .modal .row{display:flex;gap:12px;justify-content:flex-end;margin-top:22px}
+  .src-tabs{display:flex;gap:8px;margin:6px 0 10px}
+  .src-tab{flex:1;text-align:center;padding:8px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;border:1px solid var(--line);cursor:pointer;transition:.2s}
+  .src-tab.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .dropzone{border:1px dashed var(--line);background:rgba(255,255,255,.7);padding:18px;text-align:center;font-size:12px;color:var(--ink-soft);line-height:1.9;transition:.2s}
+  .dropzone.over{border-color:var(--red);background:#fff}
+  .dz-btns{display:flex;gap:10px;justify-content:center;margin-top:10px}
+  .file-count{font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-top:8px}
+  .file-count b{color:var(--red)}
+
+  /* 底部 */
+  .footer{display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.25em;color:var(--ink-soft)}
+  .footer .bar{width:34px;height:12px;background:var(--ink);display:inline-block;vertical-align:middle;margin-left:12px}
+
+  /* ============ 平板 / 窄屏 ============ */
+  @media (max-width:900px){
+    .ui{padding:18px 20px}
+    .cover-inner{flex-direction:column;gap:30px;transform:none;padding:0 24px;text-align:center}
+    .cover-right{align-items:center;max-width:100%}
+    .body{flex-direction:column;gap:18px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+    /* 分类侧栏改成横向标签条 */
+    .sidebar{width:100%;flex-direction:row;flex-wrap:wrap;gap:8px}
+    .side-head{width:100%;margin-bottom:2px}
+    .cat{flex:0 0 auto;border:1px solid var(--line);background:rgba(255,255,255,.6)}
+    .cat.active{border-color:var(--ink)}
+    .side-stat{margin-top:6px;width:100%}
+    .grid{overflow:visible;padding:2px 2px 24px}
+    .content-head{flex-wrap:wrap;gap:10px}
+    .content-title{letter-spacing:.2em}
+    .content-head .actions{flex-wrap:wrap;gap:8px}
+    .footer{font-size:9px;letter-spacing:.15em}
+    .preview-top{flex-wrap:wrap}
+    /* 代码编辑器：文件树挪到上方 */
+    .ed-body{flex-direction:column;padding:12px 20px 20px;gap:12px}
+    .file-tree{width:100%;max-height:170px}
+  }
+
+  /* ============ 手机 ============ */
+  @media (max-width:640px){
+    .ui{padding:12px 14px calc(12px + env(safe-area-inset-bottom));padding-top:calc(12px + env(safe-area-inset-top))}
+
+    /* 顶栏：只留 brand + 时钟 + 两个按钮，副标题和「系统在线」隐去 */
+    .topbar{flex-wrap:wrap;gap:8px 12px;padding-bottom:10px}
+    .brand{gap:10px;min-width:0}
+    .brand svg{height:26px}
+    .brand .t1{font-size:16px}
+    .brand .t2{display:none}
+    .top-status{gap:12px;margin-left:auto}
+    .top-status>span:not(#clock){display:none}
+    #adminBtn,#backBtn{padding:9px 12px}
+
+    /* 内容区：搜索单独一行占满，操作按钮两列排布 */
+    .content-head{flex-direction:column;align-items:stretch;gap:10px}
+    .content-title{font-size:11px}
+    #search{width:100%;font-size:16px;padding:11px 14px}
+    .content-head .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .content-head .actions .add-btn{width:100%;text-align:center;padding:11px 8px;min-height:42px}
+
+    /* 卡片强制单列 */
+    .grid{grid-template-columns:1fr;gap:14px;overscroll-behavior:contain}
+    .card p{min-height:auto}
+
+    /* 预览页：项目名一行、Tab 一行，次要徽标隐去 */
+    .preview-top{gap:10px;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top))}
+    #prevBack{order:0}
+    .preview-top .pname{order:1;flex:1 1 auto;min-width:0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #prevCode{order:2}
+    .pv-tabs{order:3;width:100%}
+    .pv-tab{flex:1;text-align:center;padding:9px 10px;min-height:40px;display:flex;align-items:center;justify-content:center}
+    .preview-top .pcat{display:none}
+    .preview-top .pname{padding:0}
+
+    /* 代码编辑器 */
+    .ed-body{padding:10px 14px calc(16px + env(safe-area-inset-bottom));gap:10px}
+    .file-tree{max-height:140px}
+    .file-tree .ft{padding:11px 14px}
+    /* iOS 在字号 <16px 的输入框聚焦时会自动放大整页，统一提到 16px */
+    #codeArea{font-size:16px;line-height:24px;padding:12px}
+    /* 编辑器顶栏：文件路径单独一行，按钮平分整行 */
+    #editor .preview-top{gap:8px}
+    #codePath{display:block;width:100%;order:5;border:none;padding:0;font-size:11px;text-align:left}
+    #editor .preview-top .right{width:100%;margin-left:0;order:9;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    #editor .preview-top .right .add-btn{padding:11px 8px;text-align:center;min-height:42px}
+    #codeWrap{grid-column:1/-1}          /* 换行开关独占一行，别让它在两列布局里落单 */
+
+    /* 弹窗改成底部抽屉，内容可滚动 */
+    .modal-mask{align-items:flex-end}
+    .modal{width:100%;max-width:100%;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+      padding:20px 16px calc(20px + env(safe-area-inset-bottom));
+      clip-path:none;border-left:none;border-right:none;border-bottom:none}
+    .modal input,.modal select,.modal textarea{font-size:16px}
+    .modal .row{flex-wrap:wrap;gap:8px}
+    .modal .row .add-btn{flex:1 1 auto;text-align:center;padding:11px 10px}
+    .dropzone{padding:14px 10px;font-size:11px}
+
+    /* 封面 */
+    .cover-inner{gap:22px;padding:0 calc(20px + env(safe-area-inset-left)) 0 calc(20px + env(safe-area-inset-right))}
+    .logo-wrap svg{width:min(70vw,280px);height:auto}
+    .logo-sub{font-size:10px;letter-spacing:.3em;margin-top:12px}
+    .cover-title{font-size:27px}
+    .cover-desc{font-size:13px;line-height:1.8}
+    .sq-inline{margin-top:12px;width:8px;height:8px}
+    #enterBtn{width:min(82vw,240px);height:52px;font-size:15px}
+
+    .footer{flex-wrap:wrap;gap:6px;font-size:9px;letter-spacing:.1em}
+    .footer .bar{display:none}
+    .lab-bg .bigletter{font-size:150px}
+
+    /* 提示条在手机上左右留边，避免贴边和被刘海/手势条遮挡 */
+    #toast{left:14px;right:14px;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateY(20px);
+      justify-content:space-between;flex-wrap:wrap;gap:10px;padding:10px 14px}
+    #toast.show{transform:translateY(0)}
+  }
+
+  /* 横屏矮屏（手机横放）：压缩纵向留白 */
+  @media (max-height:520px) and (orientation:landscape){
+    .ui{padding:10px 16px}
+    .topbar{padding-bottom:8px}
+    .body{padding-top:12px}
+    .cover-inner{gap:16px}
+    .logo-wrap svg{width:min(40vw,200px);height:auto}
+    .cover-title{font-size:22px}
+    #enterBtn{height:46px}
+  }
+
+  /* 触屏设备：没有 hover，卡片的编辑/代码/删除按钮必须常驻，否则永远点不到 */
+  @media (hover:none){
+    .card .op-btn{opacity:1;width:26px;height:26px;line-height:24px}
+    .card .edit-btn{right:72px}
+    .card .code-btn{right:41px}
+    .card .del-btn{right:10px}
+    /* 按钮常驻后要给标题留出右侧空间，否则标题会钻到按钮底下 */
+    .card h3{padding-right:104px}
+    .cat .cat-op{opacity:.75}
+    .card:hover{transform:none;box-shadow:none;border-color:var(--line);background:rgba(255,255,255,.72)}
+    .add-btn:hover{background:transparent;color:inherit}
+    .add-btn.primary:hover{background:var(--ink);border-color:var(--ink)}
+    .cat:hover{border-color:var(--line);background:rgba(255,255,255,.6)}
+    .pv-tab:not(.active):hover{background:rgba(255,255,255,.75)}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="particles"></canvas>
+
+<!-- ================= 封面 ================= -->
+<div id="cover">
+  <div class="cover-inner">
+    <div class="logo-wrap">
+      <!-- 无穷符号 Logo（含 + / −） -->
+      <svg width="300" height="160" viewBox="0 0 320 160">
+        <path d="M70,80 C70,36 126,36 160,80 C194,124 250,124 250,80 C250,36 194,36 160,80 C126,124 70,124 70,80 Z"
+              fill="none" stroke="#141414" stroke-width="26" stroke-linejoin="round"/>
+        <!-- 加号：位于左环正中心 -->
+        <g stroke="#141414" stroke-width="13" stroke-linecap="square">
+          <line x1="94" y1="80" x2="122" y2="80"/>
+          <line x1="108" y1="66" x2="108" y2="94"/>
+        </g>
+        <!-- 减号：位于右环正中心，与加号完全对称 -->
+        <g stroke="#141414" stroke-width="13" stroke-linecap="square">
+          <line x1="198" y1="80" x2="226" y2="80"/>
+        </g>
+      </svg>
+      <div class="logo-sub">综合&nbsp;·&nbsp;信息&nbsp;·&nbsp;分析</div>
+    </div>
+    <div class="cover-right">
+      <div class="cover-tag">/* 个人代码档案 */</div>
+      <div class="cover-title-row">
+        <span class="sq-inline"></span>
+        <div class="cover-title">Misaka <em>LAB</em><br>代码实验场</div>
+        <span class="sq-inline"></span>
+      </div>
+      <div class="cover-desc">这里存放我构建的每一个项目 —— 前端、后端、工具与 AI 实验。保持好奇，无限迭代。</div>
+      <button id="enterBtn">进入网站</button>
+    </div>
+  </div>
+  <!-- 装饰 -->
+  <div class="sq" style="left:60px;top:44%"></div>
+  <div class="sq" style="left:60px;top:50%"></div>
+  <div class="hline" style="left:60px;right:60px;top:56%"></div>
+</div>
+
+<!-- ================= 主界面 ================= -->
+<div id="main">
+  <!-- 仿 Rhine Lab 背景大厅 -->
+  <div class="lab-bg">
+    <div class="pillar" style="left:14%"></div>
+    <div class="pillar" style="left:38%"></div>
+    <div class="pillar" style="left:62%"></div>
+    <div class="pillar" style="left:86%"></div>
+    <div class="glass" style="left:14.8%;width:22%"></div>
+    <div class="glass" style="left:39%;width:22%"></div>
+    <div class="glass" style="left:63%;width:22%"></div>
+    <div class="bigletter" style="left:20%;top:26%">A</div>
+    <div class="bigletter" style="left:45%;top:38%">B</div>
+    <div class="bigletter" style="left:70%;top:24%">C</div>
+    <div class="floor"></div>
+    <div class="redline" style="left:6%;width:16%;top:62%"></div>
+    <div class="redline" style="left:10%;width:10%;top:72%"></div>
+    <div class="redline" style="right:6%;width:14%;top:68%"></div>
+    <div class="desk" style="left:30%;bottom:18%;width:120px;height:8px"></div>
+    <div class="desk" style="left:52%;bottom:15%;width:150px;height:8px"></div>
+    <div class="desk" style="left:72%;bottom:20%;width:100px;height:8px"></div>
+  </div>
+
+  <div class="ui">
+    <div class="topbar">
+      <div class="brand">
+        <svg viewBox="0 0 320 160">
+          <path d="M70,80 C70,36 126,36 160,80 C194,124 250,124 250,80 C250,36 194,36 160,80 C126,124 70,124 70,80 Z"
+                fill="none" stroke="#141414" stroke-width="26" stroke-linejoin="round"/>
+          <g stroke="#141414" stroke-width="13" stroke-linecap="square">
+            <line x1="94" y1="80" x2="122" y2="80"/><line x1="108" y1="66" x2="108" y2="94"/>
+            <line x1="198" y1="80" x2="226" y2="80"/>
+          </g>
+        </svg>
+        <div>
+          <div class="t1">Misaka LAB</div>
+          <div class="t2">代码仓库管理系统</div>
+        </div>
+      </div>
+      <div class="top-status">
+        <span><span class="dot"></span>系统在线</span>
+        <span id="clock">--:--:--</span>
+        <button class="add-btn" id="adminBtn">🔒 编辑模式</button>
+        <button id="backBtn">← 返回封面</button>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="sidebar">
+        <div class="side-head">仓库分类</div>
+        <div id="catList"></div>
+        <div class="side-stat">
+          仓库总数：<b id="statTotal">0</b><br>
+          收到星标：<b id="statStars">0</b><br>
+          语言种类：<b id="statLangs">0</b>
+          <button class="add-btn" id="zeroStars">☆ 星标全部归零</button>
+          <button class="add-btn" id="exportBtn" style="margin-top:8px">导出列表（JSON）</button>
+          <button class="add-btn" id="exportFullBtn" style="margin-top:8px">完整备份（含文件）</button>
+          <button class="add-btn" id="importBtn" style="margin-top:8px">导入数据</button>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="content-head">
+          <div class="content-title" id="contentTitle">全部项目</div>
+          <div class="actions">
+            <input id="search" type="text" placeholder="搜索项目…（按 / 聚焦）">
+            <button class="add-btn" id="zoomBtn">缩放 100%</button>
+            <button class="add-btn" id="sizeBtn">⚙ 卡片尺寸</button>
+            <button class="add-btn" id="addCatBtn">＋ 新建分类</button>
+            <button class="add-btn primary" id="addProjBtn">＋ 添加项目</button>
+          </div>
+        </div>
+        <div class="grid" id="grid"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span id="footPath">根目录 / 全部</span>
+      <span>Misaka LAB 强力驱动<span class="bar"></span></span>
+    </div>
+  </div>
+</div>
+
+<!-- 项目预览层 -->
+<div id="preview">
+  <div class="preview-top">
+    <button class="add-btn" id="prevCode">编辑代码</button>
+    <button class="add-btn" id="prevBack">← 返回仓库</button>
+    <span class="pname" id="prevName"></span>
+    <div class="pv-tabs">
+      <span class="pv-tab active" data-tab="run">效果预览</span>
+      <span class="pv-tab" data-tab="src">源代码</span>
+    </div>
+    <span class="pcat" id="prevCat"></span>
+    <span class="pcat right" id="prevLang"></span>
+  </div>
+  <!-- sandbox：导入的本地项目脚本一律隔离，禁止访问父页面的 localStorage / IndexedDB。
+       注意不能加 allow-same-origin，否则沙箱形同虚设（也正因如此，预览资源改用 data: URL 而非 blob:） -->
+  <iframe id="previewFrame" title="项目预览" sandbox="allow-scripts allow-modals allow-popups allow-forms" referrerpolicy="no-referrer"></iframe>
+</div>
+
+<!-- 代码编辑器界面（默认开启自动换行，代码多行显示而不是挤成一条长龙） -->
+<div id="editor" class="wrap-on">
+  <div class="preview-top">
+    <button class="add-btn" id="codeBack">← 返回仓库</button>
+    <span class="pname" id="codeName"></span>
+    <span class="pcat" id="codePath">未选择文件</span>
+    <span class="right">
+      <button class="add-btn" id="codeWrap" title="自动换行开启时无法显示行号（折行会让行号错位）">⇥ 自动换行：开</button>
+      <button class="add-btn" id="codeSave">保存</button>
+      <button class="add-btn primary" id="codeRun">保存并预览</button>
+    </span>
+  </div>
+  <div class="ed-body">
+    <div class="file-tree" id="fileTree"></div>
+    <div class="code-area">
+      <div id="gutter"></div>
+      <textarea id="codeArea" spellcheck="false" wrap="off"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- 添加项目 / 新建分类 弹窗 -->
+<div class="modal-mask" id="modalMask">
+  <div class="modal">
+    <h3 id="modalTitle">添加新项目</h3>
+    <div id="projFields">
+      <label>项目名称</label>
+      <input id="fName" placeholder="my-awesome-project">
+      <div style="display:flex;gap:12px">
+        <div style="flex:1"><label>所属分类</label><select id="fCat"></select></div>
+        <div style="flex:1"><label>主要语言</label><input id="fLang" placeholder="留空则自动识别"></div>
+      </div>
+      <label>项目来源</label>
+      <div class="src-tabs">
+        <div class="src-tab active" data-src="local">本地项目文件</div>
+        <div class="src-tab" data-src="tpl">内置模板</div>
+      </div>
+      <div id="srcLocal">
+        <div class="dropzone" id="dropzone">
+          <div>把项目文件拖到这里，或点击下方按钮选择<br>（建议选择整个项目文件夹；重新选择将替换原文件）</div>
+          <div class="dz-btns">
+            <button class="add-btn" id="pickDir">选择项目文件夹</button>
+            <button class="add-btn" id="pickFiles">选择文件</button>
+          </div>
+        </div>
+        <div class="file-count" id="fileCount">尚未选择文件</div>
+        <input type="file" id="dirInput" webkitdirectory directory multiple hidden>
+        <input type="file" id="fileInput" multiple hidden>
+      </div>
+      <div id="srcTpl" style="display:none">
+        <label>预览模板（决定点开项目后展示的页面）</label>
+        <select id="fTpl"></select>
+      </div>
+      <div id="fileEditBox" style="display:none">
+        <label>直接修改文件内容（可选）</label>
+        <select id="fFile"><option value="">（不修改文件）</option></select>
+        <textarea id="fContent" style="min-height:130px;font-family:var(--mono);font-size:12px" placeholder="选择一个文件后，在此编辑其内容并保存…"></textarea>
+      </div>
+      <label>项目简介</label>
+      <textarea id="fDesc" placeholder="简单描述这个项目…"></textarea>
+    </div>
+    <div id="catFields" style="display:none">
+      <label>分类名称</label>
+      <input id="fCatName" placeholder="例如：移动端">
+    </div>
+    <div class="row">
+      <button class="add-btn" id="modalCancel">取消</button>
+      <button class="add-btn primary" id="modalOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 卡片尺寸设置 -->
+<div class="modal-mask" id="styleMask">
+  <div class="modal">
+    <h3>卡片尺寸设置（修改后自动重新排版）</h3>
+    <div style="display:flex;gap:12px">
+      <div style="flex:1"><label>最小宽度 px</label><input type="number" id="stW" min="180" max="560" step="10"></div>
+      <div style="flex:1"><label>卡片高度 px</label><input type="number" id="stH" min="0" max="600" step="10"></div>
+    </div>
+    <div style="display:flex;gap:12px">
+      <div style="flex:1"><label>内边距 px</label><input type="number" id="stP" min="6" max="40" step="1"></div>
+      <div style="flex:1"><label>简介字号 px</label><input type="number" id="stF" min="10" max="18" step="0.5"></div>
+    </div>
+    <div style="display:flex;gap:12px">
+      <div style="flex:1"><label>卡片间距 px</label><input type="number" id="stG" min="4" max="40" step="2"></div>
+      <div style="flex:1"><label>整体缩放 %</label><input type="number" id="stZ" min="60" max="150" step="5"></div>
+    </div>
+    <div class="row">
+      <button class="add-btn" id="stReset">恢复默认</button>
+      <button class="add-btn" id="stCancel">取消</button>
+      <button class="add-btn primary" id="stOk">应用</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"><span id="toastMsg"></span><button type="button" id="toastAct">撤销</button></div>
+
+<div id="envWarn"></div>
+
+<!-- 口令输入弹窗（替代 prompt，密码不明文回显在地址栏/控制台） -->
+<div class="modal-mask" id="passMask">
+  <div class="modal" style="width:380px">
+    <h3>编辑模式</h3>
+    <p style="font-size:12px;color:var(--ink-soft);line-height:1.8">
+      输入编辑口令以解锁增删与代码编辑。<br>
+      注意：本站为纯前端页面，口令只用于防止误触，无法防止他人查看源码绕过。
+    </p>
+    <label for="passInput">编辑口令</label>
+    <input type="password" id="passInput" autocomplete="current-password" placeholder="请输入口令">
+    <div class="row">
+      <button class="add-btn" id="passCancel">取消</button>
+      <button class="add-btn primary" id="passOk">解锁</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= 在线预览模板（后续可直接修改这些 HTML 内容） ================= */
+/* 预览页外壳。带 viewport meta —— 没有它的话 iOS 会把 iframe 内容按 980px 虚拟宽度排版，
+   里面的 @media (max-width:700px) 就永远不会命中。 */
+function tplShell(extra,body){return '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#f2f1ee;color:#141414;padding:38px;min-height:100vh}.wrap{max-width:860px;margin:0 auto}h1{font-size:26px}h1::after{content:"";display:block;width:46px;height:4px;background:#b5483c;margin-top:10px}.sub{color:#6f6d68;font-size:13px;margin:14px 0 24px;line-height:1.8}.card{background:#fff;border:1px solid #c9c6bf;padding:20px}'+
+  /* 预览页自身的移动端适配（只在 iframe 宽度 ≤700px 时生效，PC 完全不受影响） */
+  '@media (max-width:700px){body{padding:18px 14px}.wrap{max-width:100%}h1{font-size:21px}h1::after{width:34px;height:3px}.sub{margin:12px 0 16px;font-size:12.5px}.card{padding:14px}canvas{max-width:100%;height:auto}img{max-width:100%;height:auto}.stats{flex-wrap:wrap}.stat{min-width:calc(50% - 7px)}.editor{flex-direction:column}.editor textarea{height:190px;width:100%}.prev{height:auto;min-height:200px;width:100%}.cal{width:100%;max-width:340px}.chatbox{height:56vh}.new{flex-wrap:wrap}.new input,.new button{flex:1 1 100%}table{font-size:12px}td,th{padding:6px 6px}}'+
+  extra+'</style></head><body><div class="wrap">'+body+'</div></body></html>';}
+
+const TEMPLATES={
+  /* 模板一：README 介绍页 */
+  readme:{name:"空白介绍页（README）",make:function(p){return tplShell(
+    '.feature{display:flex;gap:10px;margin:8px 0;font-size:14px}.feature::before{content:"▪";color:#b5483c}pre{background:#141414;color:#e8e6e1;padding:16px;font-family:Consolas,monospace;font-size:12px;line-height:1.8;overflow-x:auto;margin-top:18px}',
+    '<h1>'+p.name+'</h1><div class="sub">'+(p.desc||"项目简介待补充。")+'</div>'+
+    '<div class="card"><h3 style="margin-bottom:12px">特性</h3>'+
+    '<div class="feature">特性一：在此填写项目亮点</div><div class="feature">特性二：在此填写项目亮点</div><div class="feature">特性三：在此填写项目亮点</div>'+
+    '<pre>// 快速开始\nnpm install '+p.name+'\nnpm run dev</pre>'+
+    '<p class="sub" style="margin:18px 0 0">分类：'+p.cat+' ｜ 语言：'+p.lang+' ｜ ★ '+p.stars+'</p></div>');}},
+  /* 模板二：数据可视化大屏 */
+  dashboard:{name:"数据可视化大屏",make:function(p){return tplShell(
+    '.stats{display:flex;gap:14px;margin-bottom:22px}.stat{flex:1;background:#fff;border:1px solid #c9c6bf;padding:16px}.stat b{font-size:26px;display:block}.stat span{font-size:11px;color:#6f6d68;letter-spacing:.1em}.chart{display:flex;align-items:flex-end;gap:10px;height:240px;background:#fff;border:1px solid #c9c6bf;padding:20px}.bar{flex:1;background:#141414;transition:height .6s;position:relative}.bar:nth-child(3n){background:#b5483c}.bar i{position:absolute;top:-22px;left:0;right:0;text-align:center;font-style:normal;font-size:11px;font-family:Consolas,monospace}.xl{display:flex;gap:10px;margin-top:8px}.xl span{flex:1;text-align:center;font-size:11px;color:#6f6d68}',
+    '<h1>'+p.name+' · 实时数据</h1><div class="sub">模拟数据看板：每 2 秒自动刷新一次。</div>'+
+    '<div class="stats"><div class="stat"><b id="s1">0</b><span>今日访问</span></div><div class="stat"><b id="s2">0</b><span>新增用户</span></div><div class="stat"><b id="s3">0</b><span>接口调用</span></div></div>'+
+    '<div class="chart" id="chart"></div><div class="xl"><span>周一</span><span>周二</span><span>周三</span><span>周四</span><span>周五</span><span>周六</span><span>周日</span></div>'+
+    '<script>var c=document.getElementById("chart");for(var i=0;i<7;i++){var b=document.createElement("div");b.className="bar";c.appendChild(b)}function rnd(n){return Math.floor(n*0.4+Math.random()*n*0.6)}function refresh(){var bs=c.children;for(var i=0;i<bs.length;i++){var h=rnd(90);bs[i].style.height=h+"%";bs[i].innerHTML="<i>"+h+"</i>"}document.getElementById("s1").textContent=rnd(9000);document.getElementById("s2").textContent=rnd(600);document.getElementById("s3").textContent=rnd(40000)}refresh();setInterval(refresh,2000);<\/script>');}},
+  /* 模板三：Markdown 笔记 */
+  note:{name:"Markdown 笔记（实时预览）",make:function(p){return tplShell(
+    '.editor{display:flex;gap:16px}.editor textarea{flex:1;height:340px;padding:14px;border:1px solid #c9c6bf;font-family:Consolas,monospace;font-size:13px;resize:none;outline:none}.prev{flex:1;height:340px;overflow:auto;background:#fff;border:1px solid #c9c6bf;padding:16px;font-size:14px;line-height:1.9}.prev h2{margin:10px 0 6px}.prev code{background:#eee;padding:2px 6px;font-family:Consolas,monospace}',
+    '<h1>'+p.name+'</h1><div class="sub">在左侧输入 Markdown，右侧实时预览。</div>'+
+    '<div class="editor"><textarea id="src"># 我的笔记\n\n支持 **加粗**、## 标题、- 列表与 `代码`。\n\n- 待办事项一\n- 待办事项二</textarea><div class="prev" id="out"></div></div>'+
+    '<script>function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;")}function md(s){var h=esc(s);h=h.replace(/## (.*)/g,"<h2>$1</h2>");h=h.replace(/\\*\\*(.*?)\\*\\*/g,"<b>$1</b>");h=h.replace(/`([^`]+)`/g,"<code>$1</code>");h=h.replace(/^- (.*)/gm,"• $1");return h.split(/\\n/).map(function(l){return /^<h2/.test(l)||l.indexOf("•")===0||!l.trim()?l:"<p>"+l+"</p>"}).join("")}var src=document.getElementById("src"),out=document.getElementById("out");function up(){out.innerHTML=md(src.value)}src.addEventListener("input",up);up();<\/script>');}},
+  /* 模板四：待办清单 */
+  todo:{name:"待办清单（可交互）",make:function(p){return tplShell(
+    '.new{display:flex;gap:10px;margin-bottom:18px}.new input{flex:1;padding:10px 12px;border:1px solid #c9c6bf;outline:none}.new button{padding:10px 22px;border:none;background:#141414;color:#fff;cursor:pointer}.new button:hover{background:#b5483c}.item{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border:1px solid #c9c6bf;background:#fff;margin-bottom:8px;font-size:14px}.item.done span{text-decoration:line-through;color:#9a9892}.item .del{cursor:pointer;color:#b5483c;font-family:Consolas,monospace;font-size:12px}.item label{display:flex;gap:10px;align-items:center;cursor:pointer}',
+    '<h1>'+p.name+'</h1><div class="sub">一个可用的待办清单模板：添加、完成、删除。</div>'+
+    '<div class="card"><div class="new"><input id="inp" placeholder="输入待办事项，回车添加…"><button id="add">添加</button></div><div id="list"></div></div>'+
+    '<script>var list=document.getElementById("list"),inp=document.getElementById("inp");var data=[{t:"初始化项目仓库",d:false},{t:"编写 README",d:true}];function save2(){try{localStorage.setItem("todo_demo",JSON.stringify(data))}catch(e){}}function draw(){list.innerHTML="";data.forEach(function(it,i){var d=document.createElement("div");d.className="item"+(it.d?" done":"");d.innerHTML=\'<label><input type="checkbox" \'+(it.d?"checked":"")+\'><span>\'+it.t+"</span></label><span class=del>删除</span>";d.querySelector("input").onchange=function(){it.d=this.checked;save2();draw()};d.querySelector(".del").onclick=function(){data.splice(i,1);save2();draw()};list.appendChild(d)})}function add(){if(!inp.value.trim())return;data.unshift({t:inp.value.trim(),d:false});inp.value="";save2();draw()}document.getElementById("add").onclick=add;inp.addEventListener("keydown",function(e){if(e.key==="Enter")add()});try{var s=localStorage.getItem("todo_demo");if(s)data=JSON.parse(s)}catch(e){}draw();<\/script>');}},
+  /* 模板五：计算器 */
+  calc:{name:"计算器（可交互）",make:function(p){return tplShell(
+    '.cal{width:300px;background:#fff;border:1px solid #c9c6bf;padding:18px}.screen{background:#141414;color:#fff;font-family:Consolas,monospace;font-size:24px;text-align:right;padding:14px;margin-bottom:14px;min-height:56px;word-break:break-all}.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.keys button{padding:14px 0;font-size:16px;border:1px solid #c9c6bf;background:#f7f6f3;cursor:pointer}.keys button:hover{background:#e5e3de}.keys .op{background:#141414;color:#fff;border-color:#141414}.keys .eq{background:#b5483c;color:#fff;border-color:#b5483c}',
+    '<h1>'+p.name+'</h1><div class="sub">四则运算计算器模板。</div><div class="cal"><div class="screen" id="sc">0</div><div class="keys" id="ks"></div></div>'+
+    '<script>var keys=["C","(",")","÷","7","8","9","×","4","5","6","-","1","2","3","+","0",".","⌫","="];var ks=document.getElementById("ks"),sc=document.getElementById("sc"),ex="";keys.forEach(function(k){var b=document.createElement("button");b.textContent=k;if("÷×-+".indexOf(k)>-1)b.className="op";if(k==="=")b.className="eq";b.onclick=function(){if(k==="C"){ex=""}else if(k==="⌫"){ex=ex.slice(0,-1)}else if(k==="="){try{ex=String(Function("return ("+ex.replace(/÷/g,"/").replace(/×/g,"*")+")")())}catch(e){ex="错误"}}else{ex+=k}sc.textContent=ex||"0"};ks.appendChild(b)});<\/script>');}},
+  /* 模板六：AI 对话客户端 */
+  chat:{name:"AI 对话客户端",make:function(p){return tplShell(
+    '.chatbox{height:380px;display:flex;flex-direction:column;background:#fff;border:1px solid #c9c6bf}.msgs{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px}.msg{max-width:75%;padding:10px 14px;font-size:14px;line-height:1.7}.msg.me{align-self:flex-end;background:#141414;color:#fff}.msg.bot{align-self:flex-start;background:#f2f1ee;border:1px solid #e0ddd7}.inp{display:flex;border-top:1px solid #c9c6bf}.inp input{flex:1;border:none;padding:14px;outline:none;font-size:14px}.inp button{border:none;background:#b5483c;color:#fff;padding:0 26px;cursor:pointer}',
+    '<h1>'+p.name+'</h1><div class="sub">对话界面模板（本地模拟回复，可替换为真实 API）。</div>'+
+    '<div class="chatbox"><div class="msgs" id="ms"><div class="msg bot">你好！我是 Misaka LAB 的示例助手，输入任意内容试试。</div></div><div class="inp"><input id="ipt" placeholder="输入消息，回车发送…"><button id="send">发送</button></div></div>'+
+    '<script>var replies=["收到！这是一个模拟回复。","不错的想法，可以把它加入你的仓库。","示例数据：接口响应 42ms。","试试打开其他模板项目的预览～","我可以被替换成真实的大模型 API。"];var ms=document.getElementById("ms"),ipt=document.getElementById("ipt");function send(){var v=ipt.value.trim();if(!v)return;var m=document.createElement("div");m.className="msg me";m.textContent=v;ms.appendChild(m);ipt.value="";ms.scrollTop=ms.scrollHeight;setTimeout(function(){var b=document.createElement("div");b.className="msg bot";b.textContent=replies[Math.floor(Math.random()*replies.length)];ms.appendChild(b);ms.scrollTop=ms.scrollHeight},600)}document.getElementById("send").onclick=send;ipt.addEventListener("keydown",function(e){if(e.key==="Enter")send()});<\/script>');}},
+  /* 模板七：粒子特效演示 */
+  particles:{name:"粒子特效演示（Canvas）",make:function(p){return tplShell(
+    'canvas{display:block;background:#141414;border:1px solid #c9c6bf}',
+    '<h1>'+p.name+'</h1><div class="sub">Canvas 粒子系统：移动鼠标与粒子互动。</div><canvas id="cv" width="820" height="420"></canvas>'+
+    '<script>var cv=document.getElementById("cv"),c=cv.getContext("2d"),W=cv.width,H=cv.height,ps=[],m={x:-9e3,y:-9e3};for(var i=0;i<80;i++)ps.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.8,vy:(Math.random()-.5)*.8});cv.onmousemove=function(e){var r=cv.getBoundingClientRect();m.x=e.clientX-r.left;m.y=e.clientY-r.top};cv.onmouseleave=function(){m.x=-9e3};(function t(){c.clearRect(0,0,W,H);for(var i=0;i<ps.length;i++){var p=ps[i];p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;var dx=m.x-p.x,dy=m.y-p.y;if(dx*dx+dy*dy<15000){p.x+=dx*.01;p.y+=dy*.01}c.beginPath();c.arc(p.x,p.y,2,0,6.3);c.fillStyle="#fff";c.fill()}for(i=0;i<ps.length;i++)for(var j=i+1;j<ps.length;j++){var a=ps[i],b=ps[j],d=Math.hypot(a.x-b.x,a.y-b.y);if(d<90){c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.strokeStyle="rgba(255,255,255,"+(1-d/90)*.3+")";c.stroke()}}requestAnimationFrame(t)})();<\/script>');}}
+};
+
+/* ================= 项目数据（可自行修改/扩展，自动保存到 localStorage） ================= */
+const DEFAULT_PROJECTS = [
+  {name:"aurora-dashboard",   cat:"前端", lang:"Vue",         stars:128, tpl:"dashboard", desc:"基于 Vue3 + ECharts 的数据可视化大屏，支持主题切换与实时数据推送。"},
+  {name:"ink-note",           cat:"前端", lang:"TypeScript",  stars:86,  tpl:"note",      desc:"极简 Markdown 笔记应用，本地优先，支持双链与全文搜索。"},
+  {name:"pixelfx",            cat:"前端", lang:"JavaScript",  stars:54,  tpl:"particles", desc:"Canvas 粒子与像素特效工具库，零依赖，可组合的动效原语。"},
+  {name:"neuro-chat",         cat:"AI",   lang:"TypeScript",  stars:189, tpl:"chat",      desc:"本地优先的 AI 对话客户端，支持多模型切换与知识库挂载。"},
+  {name:"daily-todo",         cat:"工具", lang:"TypeScript",  stars:73,  tpl:"todo",      desc:"轻量待办清单，支持本地持久化与键盘快捷操作。"},
+  {name:"pocket-calc",        cat:"工具", lang:"JavaScript",  stars:38,  tpl:"calc",      desc:"网页版四则运算计算器，支持键盘输入与历史记录。"},
+  {name:"gopher-api",         cat:"后端", lang:"Go",          stars:203, tpl:"readme",    desc:"高性能 RESTful / gRPC 服务脚手架，内置 JWT、限流与链路追踪。"},
+  {name:"taskflow-server",    cat:"后端", lang:"Java",        stars:97,  tpl:"readme",    desc:"Spring Cloud 微服务任务调度平台，支持分布式定时与失败重试。"},
+  {name:"redis-lite",         cat:"后端", lang:"C",           stars:312, tpl:"readme",    desc:"教学向的迷你 KV 存储，实现 RESP 协议、RDB 持久化与主从复制。"},
+  {name:"autodeploy-cli",     cat:"工具", lang:"Rust",        stars:145, tpl:"readme",    desc:"一键构建并部署静态站点到多云的命令行工具，支持增量上传。"},
+  {name:"json-grabber",       cat:"工具", lang:"Python",      stars:66,  tpl:"readme",    desc:"浏览器插件，右键即可抓取页面接口 JSON 并生成类型定义。"},
+  {name:"dotfiles",           cat:"工具", lang:"Shell",       stars:41,  tpl:"readme",    desc:"我的开发环境配置集合：zsh、tmux、neovim 一键安装脚本。"},
+  {name:"llm-playground",     cat:"AI",   lang:"Python",      stars:267, tpl:"readme",    desc:"大模型实验场：Prompt 编排、RAG 流水线与评测基准一体化。"},
+  {name:"vision-sorter",      cat:"AI",   lang:"Python",      stars:158, tpl:"readme",    desc:"基于 YOLO 的图像自动分类归档工具，支持增量训练。"}
+];
+const DEFAULT_CATS = ["全部","前端","后端","工具","AI"];
+let PROJECTS,CATS;
+try{
+  const d=JSON.parse(localStorage.getItem("misaka_lab_data")||"null");
+  PROJECTS=(d&&d.projects)?d.projects:JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
+  CATS=(d&&d.cats)?d.cats:DEFAULT_CATS.slice();
+}catch(e){
+  PROJECTS=JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
+  CATS=DEFAULT_CATS.slice();
+}
+/* 内置项目补充默认更新日期：没有就用今天，别写死某个日期假装它刚更新过 */
+PROJECTS.forEach(p=>{if(!p.updatedAt)p.updatedAt=todayStr()});
+function saveData(){try{localStorage.setItem("misaka_lab_data",JSON.stringify({projects:PROJECTS,cats:CATS}))}catch(e){}}
+const LANG_COLORS = {Vue:"#42b883",TypeScript:"#3178c6",JavaScript:"#f1e05a",Go:"#00add8",Java:"#b07219",C:"#555",Rust:"#dea584",Python:"#3572a5",Shell:"#89e051"};
+
+let activeCat="全部", keyword="";
+function todayStr(){
+  const d=new Date(),p2=n=>String(n).padStart(2,"0");
+  return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());
+}
+
+/* ================= 渲染 ================= */
+const grid=document.getElementById("grid");
+function render(){
+  const list=PROJECTS.filter(p=>(activeCat==="全部"||p.cat===activeCat)&&
+    ((p.name||"")+(p.desc||"")+(p.lang||"")).toLowerCase().includes(keyword));
+  /* 所有来自用户输入的字段一律经 escHtml 转义，避免项目名/简介里的标签破坏页面或注入脚本 */
+  grid.innerHTML=list.map((p,i)=>`
+    <div class="card" style="animation-delay:${Math.min(i,10)*0.06}s">
+      ${isAdmin?`<button class="op-btn edit-btn" title="编辑项目信息">✎</button><button class="op-btn code-btn" title="编辑代码">&lt;/&gt;</button><button class="op-btn del-btn" title="删除项目">×</button>`:""}
+      <h3><svg viewBox="0 0 16 16" fill="#6f6d68"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h6.9L14 2.6V13.5A2.5 2.5 0 0 1 11.5 16h-7A2.5 2.5 0 0 1 2 13.5v-11Zm4 5.5a.75.75 0 0 0 0 1.5h4a.75.75 0 0 0 0-1.5H6Z"/></svg><span class="t">${escHtml(p.name||"")}</span></h3>
+      <p>${escHtml(p.desc||"")}</p>
+      <div class="meta">
+        <span class="ctag">${escHtml(p.kind==="local"?"本地 · "+(p.cat||""):(p.cat||""))}</span>
+        <span><span class="lang-dot" style="background:${escHtml(LANG_COLORS[p.lang]||"#999")}"></span>${escHtml(p.lang||"—")}</span>
+        <span>★ ${Number(p.stars)||0}</span>
+        <span>更新于 ${escHtml(p.updatedAt||"—")}</span>
+        <span style="margin-left:auto;color:var(--red)">▶ 预览</span>
+      </div>
+    </div>`).join("")||`<div style="grid-column:1/-1;text-align:center;padding:60px;font-family:var(--mono);color:var(--ink-soft)">没有匹配的仓库 _</div>`;
+  grid.classList.toggle("no-anim",!!keyword);
+  grid.querySelectorAll(".card").forEach((el,i)=>{
+    el.onclick=()=>openPreview(list[i]);
+    const eb=el.querySelector(".edit-btn"),cb=el.querySelector(".code-btn"),db=el.querySelector(".del-btn");
+    if(eb)eb.onclick=e=>{e.stopPropagation();openModal("proj-edit",list[i]);};
+    if(cb)cb.onclick=e=>{e.stopPropagation();openEditor(list[i]);};
+    if(db)db.onclick=e=>{e.stopPropagation();deleteProject(list[i]);};
+  });
+
+  document.getElementById("statTotal").textContent=PROJECTS.length;
+  document.getElementById("statStars").textContent=PROJECTS.reduce((s,p)=>s+p.stars,0);
+  document.getElementById("statLangs").textContent=new Set(PROJECTS.map(p=>p.lang)).size;
+  document.getElementById("contentTitle").textContent=
+    (activeCat==="全部"?"全部项目":activeCat+" 项目");
+  document.getElementById("footPath").textContent="根目录 / "+activeCat+(keyword?" / 搜索：「"+keyword+"」":"");
+}
+/* 分类列表（可重渲染，支持新建分类） */
+const catList=document.getElementById("catList");
+function renderCats(){
+  catList.innerHTML=CATS.map(c=>{
+    const n=c==="全部"?PROJECTS.length:PROJECTS.filter(p=>p.cat===c).length;
+    const label=c==="AI"?"AI 实验":c;
+    const ops=isAdmin&&c!=="全部"
+      ? `<span class="cat-op" data-editcat="${escHtml(c)}" title="重命名分类">✎</span><span class="cat-op" data-delcat="${escHtml(c)}" title="删除分类">×</span>`:"";
+    return `<div class="cat${c===activeCat?" active":""}" data-cat="${escHtml(c)}"><span>${escHtml(label)}</span><span class="cnt">${String(n).padStart(2,"0")}</span>${ops}</div>`;
+  }).join("");
+  catList.querySelectorAll(".cat").forEach(el=>el.onclick=()=>{
+    activeCat=el.dataset.cat;
+    renderCats();render();
+  });
+  catList.querySelectorAll("[data-delcat]").forEach(el=>el.addEventListener("click",e=>{
+    e.stopPropagation();deleteCategory(el.dataset.delcat);
+  }));
+  catList.querySelectorAll("[data-editcat]").forEach(el=>el.addEventListener("click",e=>{
+    e.stopPropagation();openModal("cat-edit",el.dataset.editcat);
+  }));
+}
+
+/* ================= 权限：仅输入口令的管理员可增改删 =================
+   ⚠️ 这是「防误触开关」，不是安全机制。纯前端页面没有任何秘密可言——
+   打开控制台把 isAdmin 置真就能绕过，任何人都能做到。
+   口令以 SHA-256 摘要存放，只是避免源码里躺着明文。真要保护数据，请放到登录后的后端后面。
+   —— 更换口令：控制台执行 await changeAdminPass("新口令")，把打印出的哈希替换到下面常量即可。 */
+const ADMIN_PASS_HASH="d5d01a5b5324607d1e5bf3d71eb47a156e6b1b40188f3463b4af31cf60bdb005"; /* "misaka" */
+async function adminHash(v){
+  const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(String(v)));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+async function adminPassOk(v){
+  if(!(typeof crypto!=="undefined"&&crypto.subtle&&crypto.subtle.digest))return false;
+  try{return (await adminHash(v))===ADMIN_PASS_HASH}catch(e){return false}
+}
+window.changeAdminPass=async v=>{const h=await adminHash(v);console.log("新口令哈希："+h);return h;};
+let isAdmin=false;
+function setAdmin(on){
+  isAdmin=on;
+  try{sessionStorage.setItem("misaka_admin",on?"1":"")}catch(e){}
+  const b=document.getElementById("adminBtn");
+  b.textContent=on?"🔓 编辑模式（点击锁定）":"🔒 编辑模式";
+  b.classList.toggle("on",on);
+  document.getElementById("addProjBtn").style.display=on?"inline-block":"none";
+  document.getElementById("addCatBtn").style.display=on?"inline-block":"none";
+  document.getElementById("zeroStars").style.display=on?"block":"none";
+  renderCats();render();
+}
+function needAdmin(){
+  if(isAdmin)return true;
+  alert("当前为只读模式：请点击右上角「🔒 编辑模式」并输入口令后再操作。");
+  return false;
+}
+/* 用站内弹窗替代 prompt：密码框不明文回显，且不会污染历史/控制台 */
+const passMask=document.getElementById("passMask"),passInput=document.getElementById("passInput");
+function openPassModal(){passInput.value="";passMask.classList.add("show");setTimeout(()=>passInput.focus(),60);}
+function closePassModal(){passMask.classList.remove("show");passInput.value="";}
+document.getElementById("adminBtn").onclick=()=>{
+  if(isAdmin){setAdmin(false);return;}
+  if(!(typeof crypto!=="undefined"&&crypto.subtle&&crypto.subtle.digest)){
+    toast("当前环境不支持口令校验，请用 http:// 或 localhost 打开本页");return;
+  }
+  openPassModal();
+};
+document.getElementById("passCancel").onclick=closePassModal;
+passMask.addEventListener("click",e=>{if(e.target===passMask)closePassModal();});
+passInput.addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("passOk").click();});
+document.getElementById("passOk").onclick=async()=>{
+  const v=passInput.value;
+  if(!v){toast("请输入口令");return;}
+  if(await adminPassOk(v)){closePassModal();setAdmin(true);toast("编辑模式已解锁");}
+  else{passInput.value="";toast("口令不正确");passInput.focus();}
+};
+
+/* ================= 删除项目 / 删除分类 / 星标归零 ================= */
+/* 删除不再是不可逆的：删除后 7 秒内可在提示条上点「撤销」还原（含本地文件） */
+async function deleteProject(p){
+  if(!needAdmin())return;
+  if(!confirm('确定删除项目「'+p.name+'」？'+(p.kind==="local"?"（其本地文件也会一并清除）":"")))return;
+  const idx=PROJECTS.indexOf(p);
+  let files=null;
+  if(p.kind==="local"){
+    try{files=await FileDB.getFiles(p.name)}catch(e){files=null}
+    try{await FileDB.clear(p.name)}catch(e){}
+  }
+  PROJECTS=PROJECTS.filter(x=>x!==p);
+  saveData();renderCats();render();
+  toast("已删除「"+p.name+"」","撤销",async()=>{
+    PROJECTS.splice(Math.min(idx,PROJECTS.length),0,p);
+    if(files)for(const f of files){try{await FileDB.put(p.name+"|"+f.path,f.file)}catch(e){}}
+    saveData();renderCats();render();toast("已恢复「"+p.name+"」");
+  });
+}
+async function deleteCategory(c){
+  if(!needAdmin())return;
+  if(c==="全部")return;
+  if(!confirm('确定删除分类「'+c+'」？该分类下的项目将移动到「未分类」。'))return;
+  const idx=CATS.indexOf(c);
+  const moved=PROJECTS.filter(p=>p.cat===c);
+  CATS=CATS.filter(x=>x!==c);
+  PROJECTS.forEach(p=>{if(p.cat===c)p.cat="未分类";});
+  if(!CATS.includes("未分类")&&PROJECTS.some(p=>p.cat==="未分类"))CATS.push("未分类");
+  if(activeCat===c)activeCat="全部";
+  saveData();renderCats();render();
+  toast("已删除分类「"+c+"」","撤销",()=>{
+    CATS.splice(Math.min(idx,CATS.length),0,c);
+    moved.forEach(p=>p.cat=c);
+    if(!CATS.includes("未分类")||!PROJECTS.some(p=>p.cat==="未分类")){
+      const i=CATS.indexOf("未分类");if(i>-1&&c!=="未分类")CATS.splice(i,1);
+    }
+    saveData();renderCats();render();toast("已恢复分类「"+c+"」");
+  });
+}
+document.getElementById("zeroStars").onclick=()=>{
+  if(!needAdmin())return;
+  if(!confirm("将所有项目的星标数归零？"))return;
+  const backup=JSON.parse(JSON.stringify(PROJECTS));
+  PROJECTS.forEach(p=>p.stars=0);
+  saveData();renderCats();render();
+  toast("星标已全部归零","撤销",()=>{
+    PROJECTS.length=0;backup.forEach(p=>PROJECTS.push(p));
+    saveData();renderCats();render();toast("已撤销");
+  });
+};
+document.getElementById("exportBtn").onclick=exportData;
+document.getElementById("exportFullBtn").onclick=exportAll;
+document.getElementById("importBtn").onclick=importData;
+document.getElementById("search").addEventListener("input",e=>{keyword=e.target.value.trim().toLowerCase();render();});
+/* ================= 卡片尺寸：可自定义参数，修改后自动重新排版 ================= */
+const CARD_DEFAULT={w:260,h:0,p:18,f:12.5,g:16,z:100};
+let cardStyle=Object.assign({},CARD_DEFAULT);
+try{const s=JSON.parse(localStorage.getItem("misaka_card_style")||"null");if(s)cardStyle=Object.assign(cardStyle,s)}catch(e){}
+function applyCardStyle(){
+  grid.style.setProperty("--card-w",Math.max(160,cardStyle.w)+"px");
+  grid.style.setProperty("--card-mh",cardStyle.h>0?cardStyle.h+"px":"auto");
+  grid.style.setProperty("--card-p",Math.max(4,cardStyle.p)+"px");
+  grid.style.setProperty("--card-f",Math.max(9,cardStyle.f)+"px");
+  grid.style.setProperty("gap",Math.max(2,cardStyle.g)+"px");
+  grid.style.zoom=Math.max(50,cardStyle.z)/100;
+  const zb=document.getElementById("zoomBtn");
+  if(zb)zb.textContent="缩放 "+cardStyle.z+"%";
+  try{localStorage.setItem("misaka_card_style",JSON.stringify(cardStyle))}catch(e){}
+}
+const ZOOMS=[100,85,72];let zoomIdx=ZOOMS.indexOf(cardStyle.z);if(zoomIdx<0)zoomIdx=0;
+document.getElementById("zoomBtn").onclick=()=>{
+  zoomIdx=(zoomIdx+1)%ZOOMS.length;
+  cardStyle.z=ZOOMS[zoomIdx];
+  applyCardStyle();
+};
+const styleMask=document.getElementById("styleMask");
+function fillStyleInputs(){
+  document.getElementById("stW").value=cardStyle.w;
+  document.getElementById("stH").value=cardStyle.h;
+  document.getElementById("stP").value=cardStyle.p;
+  document.getElementById("stF").value=cardStyle.f;
+  document.getElementById("stG").value=cardStyle.g;
+  document.getElementById("stZ").value=cardStyle.z;
+}
+function readStyleInputs(){
+  const num=id=>parseFloat(document.getElementById(id).value);
+  cardStyle.w=isNaN(num("stW"))?CARD_DEFAULT.w:num("stW");
+  cardStyle.h=isNaN(num("stH"))?0:num("stH");
+  cardStyle.p=isNaN(num("stP"))?CARD_DEFAULT.p:num("stP");
+  cardStyle.f=isNaN(num("stF"))?CARD_DEFAULT.f:num("stF");
+  cardStyle.g=isNaN(num("stG"))?CARD_DEFAULT.g:num("stG");
+  cardStyle.z=isNaN(num("stZ"))?CARD_DEFAULT.z:num("stZ");
+  zoomIdx=ZOOMS.indexOf(cardStyle.z);if(zoomIdx<0)zoomIdx=0;
+}
+document.getElementById("sizeBtn").onclick=()=>{fillStyleInputs();styleMask.classList.add("show")};
+document.getElementById("stCancel").onclick=()=>styleMask.classList.remove("show");
+styleMask.addEventListener("click",e=>{if(e.target===styleMask)styleMask.classList.remove("show")});
+document.getElementById("stReset").onclick=()=>{
+  cardStyle=Object.assign({},CARD_DEFAULT);
+  fillStyleInputs();applyCardStyle();render();
+};
+document.getElementById("stOk").onclick=()=>{
+  readStyleInputs();applyCardStyle();render();
+  styleMask.classList.remove("show");
+  toast("卡片尺寸已应用");
+};
+applyCardStyle();
+/* 判断是否正在输入：编辑代码时按 / 不该把焦点抢走 */
+function isTyping(){
+  const a=document.activeElement;
+  if(!a)return false;
+  const t=(a.tagName||"").toUpperCase();
+  return t==="INPUT"||t==="TEXTAREA"||t==="SELECT"||a.isContentEditable===true;
+}
+document.addEventListener("keydown",e=>{
+  if(e.key==="/"&&!isTyping()){
+    if(!main.classList.contains("show"))return;
+    e.preventDefault();document.getElementById("search").focus();return;
+  }
+  if(e.key!=="Escape")return;
+  if(document.getElementById("modalMask").classList.contains("show")){document.getElementById("modalMask").classList.remove("show");return;}
+  if(document.getElementById("passMask").classList.contains("show")){closePassModal();return;}
+  if(document.getElementById("styleMask").classList.contains("show")){document.getElementById("styleMask").classList.remove("show");return;}
+  const pg=(history.state&&history.state.page)||"cover";
+  /* 编辑器里有未保存的修改，ESC 不许直接把人带走 */
+  if(pg==="code"&&codeDirty){
+    if(!confirm("编辑器中有未保存的修改，确定离开吗？"))return;
+    codeDirty=false;
+  }
+  if(pg!=="cover")history.back();
+});
+
+/* ================= 导航层级：封面 → 仓库列表 → 预览 / 代码（逐级回退 + 过渡动画） ================= */
+const cover=document.getElementById("cover"),main=document.getElementById("main");
+const preview=document.getElementById("preview");
+let pframe=document.getElementById("previewFrame");
+const editor=document.getElementById("editor");
+
+/* 往预览 iframe 里写内容的唯一入口。
+   必须这么做的原因：直接改已在 DOM 里的 iframe 的 src/srcdoc，浏览器会为每次改动
+   在「联合会话历史」里加一条记录 —— 结果就是点一次卡片后要按三四次后退才回得去，
+   而且前几下看到的只是 iframe 内容在原地闪回。
+   正确姿势：先造一个新的 iframe（srcdoc 在插入 DOM 之前设好），再整体替换掉旧的，
+   这样 iframe 的装载不产生历史记录，后退只剩我们自己 pushState 的那一条。 */
+function setPreviewDoc(html){
+  const doc=(html==null?"":html);
+  try{
+    const neo=document.createElement("iframe");
+    neo.id="previewFrame";
+    neo.title="项目预览";
+    neo.setAttribute("sandbox","allow-scripts allow-modals allow-popups allow-forms");
+    neo.setAttribute("referrerpolicy","no-referrer");
+    neo.srcdoc=doc;                       /* ← 必须在插入 DOM 之前设置 */
+    pframe.parentNode.replaceChild(neo,pframe);
+    pframe=neo;
+  }catch(e){
+    pframe.srcdoc=doc;                    /* 兜底：极端情况下退回直接赋值 */
+  }
+}
+function applyCover(){
+  main.classList.remove("show");
+  cover.classList.remove("hidden");
+}
+/* toast(msg) 普通提示；toast(msg,"撤销",fn) 带一个可点击的撤销按钮 */
+function toast(msg,actionLabel,actionFn){
+  const t=document.getElementById("toast");
+  if(!t)return;
+  const msgEl=document.getElementById("toastMsg"),btn=document.getElementById("toastAct");
+  msgEl.textContent=msg;
+  t.classList.toggle("has-act",!!actionLabel);
+  t.classList.add("show");
+  if(actionLabel){
+    btn.textContent=actionLabel;
+    btn.onclick=()=>{clearTimeout(t._t);t.classList.remove("show","has-act");btn.onclick=null;if(actionFn)actionFn();};
+  }else btn.onclick=null;
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>{t.classList.remove("show","has-act");btn.onclick=null},actionLabel?7000:1600);
+}
+/* 环境告警：localStorage / IndexedDB 不可用时（典型是 file:// 直接双击打开）明确告知 */
+function envWarn(msg){
+  const el=document.getElementById("envWarn");
+  if(!el)return;
+  el.textContent=msg;
+  el.classList.add("show");
+}
+/* 统一视图切换：cover / main / preview / code —— 切换自带过渡动画 */
+function setView(page){
+  const p=page||"cover";
+  main.classList.toggle("push",p==="preview"||p==="code");
+  preview.classList.toggle("show",p==="preview");
+  editor.classList.toggle("show",p==="code");
+  if(p==="main"||p==="preview"||p==="code"){main.classList.add("show");cover.classList.add("hidden")}
+  else applyCover();
+  if(p!=="preview")setTimeout(()=>{if(!preview.classList.contains("show"))setPreviewDoc("")},520);
+}
+document.getElementById("enterBtn").onclick=()=>{
+  history.pushState({page:"main"},"","#main");
+  setView("main");
+};
+document.getElementById("backBtn").onclick=()=>{
+  if((history.state&&history.state.page)==="main"){history.back();return;}
+  applyCover();
+};
+window.addEventListener("popstate",()=>setView((history.state&&history.state.page)||"cover"));
+document.getElementById("prevCode").onclick=()=>{if(edState.proj)openEditor(edState.proj);};
+/* 从编辑器离开前的未保存保护 */
+function confirmLeaveCode(){
+  if(!codeDirty)return true;
+  if(!confirm("编辑器中有未保存的修改，确定离开吗？"))return false;
+  codeDirty=false;return true;
+}
+/* 记录编辑器是从哪一页打开的，返回时才能真正回到仓库列表
+   （从预览页进来时 code 上面压着 preview，只 back 一次会回到预览页，与按钮文案不符） */
+let codeFrom="main";
+document.getElementById("codeBack").onclick=()=>{
+  if(!confirmLeaveCode())return;
+  if((history.state&&history.state.page)==="code"){
+    history.go(codeFrom==="preview"?-2:-1);
+    return;
+  }
+  setView("main");
+};
+
+/* 时钟 */
+setInterval(()=>{
+  const d=new Date(),p=n=>String(n).padStart(2,"0");
+  document.getElementById("clock").textContent=`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+},1000);
+
+/* ================= 粒子系统 ================= */
+const cv=document.getElementById("particles"),ctx=cv.getContext("2d");
+let W,H,pts=[];
+function resize(){
+  W=cv.width=innerWidth;H=cv.height=innerHeight;
+  /* 移动端地址栏收放/旋转会频繁改尺寸，把跑到画面外的粒子拉回可视区 */
+  for(const p of pts){p.x=Math.min(Math.max(p.x,0),W);p.y=Math.min(Math.max(p.y,0),H);}
+}
+addEventListener("resize",resize);resize();
+/* 小屏降低粒子上限，省电也省帧 */
+const N=Math.min(innerWidth<=640?45:90,Math.floor(innerWidth*innerHeight/18000));
+for(let i=0;i<N;i++)pts.push({
+  x:Math.random()*W,y:Math.random()*H,
+  vx:(Math.random()-.5)*.45,vy:(Math.random()-.5)*.45,
+  r:Math.random()*1.8+.6
+});
+let mouse={x:-9999,y:-9999};
+addEventListener("mousemove",e=>{mouse.x=e.clientX;mouse.y=e.clientY;});
+
+function tick(){
+  ctx.clearRect(0,0,W,H);
+  const onMain=main.classList.contains("show");
+  const LINK=onMain?95:130;
+  for(const p of pts){
+    p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0||p.x>W)p.vx*=-1;
+    if(p.y<0||p.y>H)p.vy*=-1;
+    /* 鼠标轻微吸引 */
+    const dx=mouse.x-p.x,dy=mouse.y-p.y,d2=dx*dx+dy*dy;
+    if(d2<12000){p.x+=dx*0.004;p.y+=dy*0.004;}
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=onMain?"rgba(20,20,20,.22)":"rgba(20,20,20,.4)";
+    ctx.fill();
+  }
+  for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){
+    const a=pts[i],b=pts[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.hypot(dx,dy);
+    if(d<LINK){
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle=`rgba(20,20,20,${(1-d/LINK)*(onMain?0.08:0.15)})`;
+      ctx.lineWidth=1;ctx.stroke();
+    }
+  }
+  requestAnimationFrame(tick);
+}
+tick();
+
+/* ================= 本地项目文件仓库（IndexedDB，可存整个项目文件夹） ================= */
+const FileDB=(function(){
+  const DBNAME="misaka_lab_db",STORE="files";let dbp=null;
+  const mem=new Map();                                  /* IndexedDB 不可用时的内存回退 */
+  function open(){
+    if(dbp)return dbp;
+    dbp=new Promise(res=>{
+      if(typeof indexedDB==="undefined")return res(null);
+      try{
+        const r=indexedDB.open(DBNAME,1);
+        r.onupgradeneeded=()=>r.result.createObjectStore(STORE,{keyPath:"key"});
+        r.onsuccess=()=>res(r.result);
+        r.onerror=()=>res(null);
+      }catch(e){res(null)}
+    });
+    return dbp;
+  }
+  function idb(mode,work){
+    return open().then(d=>new Promise((res,rej)=>{
+      const t=d.transaction(STORE,mode),r=work(t.objectStore(STORE));
+      t.oncomplete=()=>res(r?r.result:undefined);
+      t.onerror=()=>rej(t.error);
+    }));
+  }
+  return {
+    probe:()=>open(),                                     /* 返回 null 表示 IndexedDB 不可用（内存回退） */
+    put:(key,file)=>open().then(d=>{if(!d){mem.set(key,file);return}return idb("readwrite",s=>s.put({key:key,file:file}))}),
+    all:()=>open().then(d=>{
+      if(!d)return Array.from(mem,([key,file])=>({key:key,file:file}));
+      return idb("readonly",s=>s.getAll()).then(r=>r||[]);
+    }),
+    del:(key)=>open().then(d=>{if(!d){mem.delete(key);return}return idb("readwrite",s=>s.delete(key))}),
+    getFiles:function(prefix){
+      return this.all().then(rows=>rows.filter(r=>r.key.indexOf(prefix+"|")===0)
+        .map(r=>({path:r.key.slice(prefix.length+1),file:r.file})));
+    },
+    clear:function(prefix){
+      return this.all().then(rows=>Promise.all(
+        rows.filter(r=>r.key.indexOf(prefix+"|")===0).map(r=>this.del(r.key))));
+    }
+  };
+})();
+
+/* 统一转义：同时处理 & < > " '，既可做文本转义也可安全地放进属性里 */
+function escHtml(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+function fmtSize(n){return n<1024?n+" B":n<1048576?(n/1024).toFixed(1)+" KB":(n/1048576).toFixed(1)+" MB";}
+const TEXT_EXT=/\.(txt|md|markdown|js|mjs|jsx|ts|tsx|vue|css|scss|less|html|htm|json|yml|yaml|ini|toml|xml|svg|py|go|java|c|h|cpp|cs|rb|php|rs|sh|bat|sql|gitignore|editorconfig|lock)$/i;
+
+/* ---- 预览资源一律转成 data: URL ----
+   为什么不用 blob:：预览 iframe 带了 sandbox（不开放 allow-same-origin，即 opaque origin），
+   而 blob: URL 只在创建者同源下可加载，沙箱里会全部 404。data: URL 没有这个限制。
+   附带收益：彻底消除了 createObjectURL 从不 revoke 的内存泄漏。 */
+const MAX_INLINE=3*1024*1024;
+const MIME_BY_EXT={html:"text/html",htm:"text/html",css:"text/css",js:"text/javascript",mjs:"text/javascript",cjs:"text/javascript",json:"application/json",svg:"image/svg+xml",png:"image/png",jpg:"image/jpeg",jpeg:"image/jpeg",gif:"image/gif",webp:"image/webp",ico:"image/x-icon",bmp:"image/bmp",avif:"image/avif",woff:"font/woff",woff2:"font/woff2",ttf:"font/ttf",otf:"font/otf",mp4:"video/mp4",webm:"video/webm",mp3:"audio/mpeg",wav:"audio/wav",txt:"text/plain",md:"text/markdown",xml:"application/xml",pdf:"application/pdf"};
+function mimeOf(path){const ext=(String(path).split(".").pop()||"").toLowerCase();return MIME_BY_EXT[ext]||"application/octet-stream";}
+function toBase64(buf){
+  const bytes=new Uint8Array(buf);let bin="";const CH=0x8000;
+  for(let i=0;i<bytes.length;i+=CH)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+CH));
+  return btoa(bin);
+}
+async function fileToData(file,path){
+  const buf=await file.arrayBuffer();
+  return "data:"+((file&&file.type)||mimeOf(path))+";base64,"+toBase64(buf);
+}
+/* 支持异步回调的 replace（原生 replace 不接受 async 回调） */
+async function replaceAsync(str,re,fn){
+  const out=[];let last=0;
+  for(const m of String(str).matchAll(re)){
+    out.push(str.slice(last,m.index));
+    out.push(await fn(...m));
+    last=m.index+m[0].length;
+  }
+  out.push(str.slice(last));
+  return out.join("");
+}
+
+/* 没有 index.html 的本地项目：生成文件浏览页 */
+async function buildFileListDoc(p,list){
+  list=list.slice().sort((a,b)=>a.path.localeCompare(b.path));
+  let rows="",blocks="";
+  for(const f of list){
+    const isImg=/^image\//.test(f.file.type)||/\.(png|jpe?g|gif|webp|bmp|ico|avif)$/i.test(f.path);
+    const isTxt=(!f.file.type||/^text\//.test(f.file.type)||TEXT_EXT.test(f.path))&&f.file.size<300*1024;
+    rows+='<tr><td class="mono">'+escHtml(f.path)+'</td><td>'+fmtSize(f.file.size)+'</td><td>'+(isImg?"图片":isTxt?"文本":"二进制")+'</td></tr>';
+    if(isImg){
+      let u=null;
+      try{u=f.file.size<=MAX_INLINE?await fileToData(f.file,f.path):null}catch(e){u=null}
+      blocks+='<div class="card" style="margin-bottom:14px"><div class="fname">'+escHtml(f.path)+'</div>'+
+        (u?'<img src="'+u+'" style="max-width:100%;margin-top:12px">':'<div class="sub">文件超过 3MB，未内联预览</div>')+'</div>';
+    }else if(isTxt){
+      let txt="";try{txt=await f.file.text()}catch(e){txt=""}
+      /* 原样展示文件内容：保留换行、不折行，超长文件不带行号以控制体积 */
+      blocks+='<div class="card" style="margin-bottom:14px"><div class="fname">'+escHtml(f.path)+
+        '　<span style="color:#6f6d68">'+lineCount(txt)+' 行</span></div>'+
+        codeView(txt,{numbers:lineCount(prettyHtml(txt))<=1500})+'</div>';
+    }
+  }
+  return tplShell('table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:8px 10px;border-bottom:1px solid #e0ddd7;text-align:left}tr:hover td{background:#f7f6f3}.fname{font-family:Consolas,monospace;font-size:12px;color:#b5483c;margin-bottom:8px}'+codeViewCSS(),
+    '<h1>'+escHtml(p.name)+'</h1><div class="sub">本地项目：共 '+list.length+' 个文件（未找到 index.html，已按文件清单展示）'+(p.desc?" ｜ "+escHtml(p.desc):"")+'</div>'+
+    '<div class="card"><table><tr><th>文件路径</th><th>大小</th><th>类型</th></tr>'+rows+'</table></div><div style="height:22px"></div>'+blocks);
+}
+
+/* 有 index.html 的本地项目：把相对引用的资源内联/改写成 data URL 后渲染。
+   覆盖四种引用：① src/href 属性 ② <link rel=stylesheet> ③ <script src> ④ CSS 里的 url() 与 @import */
+/* 路径归一化：把 a/b/../c、./c 之类统一成 c，否则 ../ 开头的引用永远匹配不上 */
+function normPath(p){
+  const out=[];
+  for(const seg of String(p||"").replace(/\\/g,"/").split("/")){
+    if(seg===""||seg===".")continue;
+    if(seg===".."){out.pop();continue;}
+    out.push(seg);
+  }
+  return out.join("/");
+}
+async function buildRunDoc(html,list){
+  const map=new Map();
+  list.forEach(f=>{
+    const n=normPath(f.path);
+    map.set(f.path,f.file);map.set(n,f.file);map.set("/"+n,f.file);
+  });
+  const base=html.path.indexOf("/")>-1?html.path.slice(0,html.path.lastIndexOf("/")):"";
+  const cache=new Map();
+  const findKey=(rel,dir)=>{
+    const raw=String(rel==null?"":rel).trim().replace(/^["']|["']$/g,"").split("?")[0].split("#")[0];
+    if(!raw)return null;
+    const c=normPath(raw);
+    const cands=[];
+    if(dir)cands.push(normPath(dir+"/"+raw));
+    cands.push(c,"/"+c);
+    return cands.filter(Boolean).find(k=>map.has(k))||null;
+  };
+  const dataOf=async key=>{
+    if(!key)return null;
+    if(cache.has(key))return cache.get(key);
+    let u=null;
+    try{const f=map.get(key);u=(f&&f.size<=MAX_INLINE)?await fileToData(f,key):null}catch(e){u=null}
+    cache.set(key,u);return u;
+  };
+  const rewriteCss=async(css,dir,depth)=>{
+    depth=depth||0;
+    let out=await replaceAsync(css,/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi,async(m,q,url)=>{
+      const d=await dataOf(findKey(url,dir));
+      return d?'url("'+d+'")':m;
+    });
+    if(depth>=5)return out;                       /* 防止 @import 循环引用把页面卡死 */
+    out=await replaceAsync(out,/@import\s+['"]([^'"]+)['"]/gi,async(m,url)=>{
+      const k=findKey(url,dir);if(!k)return m;
+      let sub="";try{sub=await map.get(k).text()}catch(e){sub=""}
+      const subDir=k.indexOf("/")>-1?k.slice(0,k.lastIndexOf("/")):"";
+      return await rewriteCss(sub,subDir,depth+1);
+    });
+    return out;
+  };
+
+  let doc="";
+  try{doc=await html.file.text()}catch(e){doc=""}
+
+  /* ① 内联 <style> 块里的 url() / @import */
+  doc=await replaceAsync(doc,/<style\b[^>]*>([\s\S]*?)<\/style>/gi,
+    async(m,css)=>"<style>"+await rewriteCss(css,base)+"</style>");
+
+  /* ② <link rel=stylesheet> → 内联 <style>（CSS 内部的 url() 按 CSS 自身目录解析） */
+  doc=await replaceAsync(doc,/<link\b[^>]*>/gi,async m=>{
+    const hm=/href\s*=\s*["']([^"']+)["']/i.exec(m);
+    if(!hm||!/\.css($|\?)/i.test(hm[1]))return m;
+    const k=findKey(hm[1],base);if(!k)return m;
+    let css="";try{css=await map.get(k).text()}catch(e){css=""}
+    const cssDir=k.indexOf("/")>-1?k.slice(0,k.lastIndexOf("/")):"";
+    return "<style>"+await rewriteCss(css,cssDir)+"</style>";
+  });
+
+  /* ③ <script src> → 内联脚本正文（data: URL 作为 module 脚本会被浏览器拦下，直接内联最稳） */
+  doc=await replaceAsync(doc,/<script\b([^>]*)\bsrc\s*=\s*["']([^"']+)["']([^>]*)>\s*<\/script\s*>/gi,
+    async(m,pre,url,post)=>{
+      const k=findKey(url,base);if(!k)return m;
+      let js="";try{js=await map.get(k).text()}catch(e){js=""}
+      if(/<\/script/i.test(js)){const d=await dataOf(k);return d?"<script"+pre+post+" src=\""+d+"\"><\/script>":m}
+      const attrs=(pre+" "+post).replace(/\ssrc\s*=\s*["'][^"']*["']/gi,"");
+      return "<script"+attrs+">"+js+"<\/script>";
+    });
+
+  /* ④ 其余 src / href / poster（图片、音视频、字体、超链接等）→ data URL */
+  doc=await replaceAsync(doc,/\b(src|href|poster)\s*=\s*["']([^"']+)["']/gi,async(m,attr,url)=>{
+    if(/^(https?:|data:|blob:|#|\/\/|mailto:|javascript:|about:|tel:)/i.test(url))return m;
+    const d=await dataOf(findKey(url,base));
+    return d?attr+'="'+d+'"':m;
+  });
+  return doc;
+}
+
+/* 「暂无预览」页 */
+function noPreviewDoc(p){
+  p=p||{name:""};
+  return tplShell('.np{display:flex;flex-direction:column;align-items:center;justify-content:center;height:340px;color:#9a9892;font-family:Consolas,monospace;text-align:center}.np b{font-size:24px;color:#141414;margin-bottom:12px;letter-spacing:.2em}',
+    '<div class="np"><b>暂 无 预 览</b><div>该项目没有可运行的 HTML 入口（index.html），<br>无法展示最终效果。</div><div style="margin-top:12px">请切换到「源代码」查看文件内容。</div></div>');
+}
+/* ============ 代码块：多行显示 ============
+   每条规则：①源码里真实存在的换行 → 一行一条记录，绝不吞掉；
+   ②超长行在行内自动折行（而不是拉成一条需要横向拖的长龙）；
+   ③行号按「逻辑行」排列，折行产生的续行不再抢行号，所以号码始终对得上。
+   实现方式是每个逻辑行一个 flex 行：左侧固定宽行号 + 右侧可折行的代码。 */
+function codeViewCSS(){
+  return '.cw{background:#141414;border:1px solid #000;max-height:72vh;overflow:auto;'+
+      'font-family:Consolas,"Courier New",monospace;font-size:12.5px;line-height:1.65;color:#e8e6e1}'+
+    '.cl{display:flex;align-items:flex-start}'+
+    '.ln{flex:0 0 58px;text-align:right;padding:0 14px;color:#6a6862;user-select:none;white-space:pre;'+
+      'background:#141414;position:sticky;left:0;z-index:1}'+
+    '.ct{flex:1 1 auto;min-width:0;padding-right:18px;white-space:pre-wrap;'+
+      'word-break:break-word;overflow-wrap:anywhere;tab-size:2}'+
+    '.srcbox{background:#141414;border:1px solid #000;max-height:420px;overflow:auto}'+
+    'pre.src{margin:0;padding:14px 18px;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;tab-size:2;'+
+      'font-family:Consolas,"Courier New",monospace;font-size:12.5px;line-height:1.65;color:#e8e6e1}'+
+    '@media (max-width:700px){.cw{font-size:12px}.ln{flex:0 0 44px;padding:0 10px}.ct{padding-right:12px}pre.src{padding:12px 14px;font-size:12px}}';
+}
+/* 把挤成一整行的 HTML 按块级标签拆成多行（只插入换行，不改动任何字符，仅用于展示） */
+function prettyHtml(src){
+  const s=String(src==null?"":src);
+  if(s.length<500||s.split("\n").length>3)return s;   /* 本来就有换行的，原样不动 */
+  /* 注意：不能写成 <(?!\/?)... —— 可空断言会让整条正则永远匹配不上 */
+  const re=/\s*<(html|head|body|meta|title|link|style|script|div|h[1-6]|p|ul|ol|li|table|thead|tbody|tr|td|th|section|header|footer|nav|main|article|aside|form|canvas|pre|blockquote|figure|dl|dt|dd)\b/gi;
+  const out=s.replace(re,m=>"\n"+m.trim());
+  return out.split("\n").length>2?out.replace(/\n{2,}/g,"\n").replace(/^\n/,""):s;
+}
+function codeView(src,opt){
+  opt=opt||{};
+  const text=opt.pretty===false?String(src==null?"":src):prettyHtml(src);
+  if(opt.numbers===false)return '<div class="srcbox"><pre class="src">'+escHtml(text)+'</pre></div>';
+  const lines=text.split("\n");
+  return '<div class="cw">'+lines.map((l,i)=>
+    '<div class="cl"><span class="ln">'+(i+1)+'</span><span class="ct">'+escHtml(l)+'</span></div>'
+  ).join("")+'</div>';
+}
+function lineCount(s){return String(s==null?"":s).split("\n").length;}
+
+/* 模板项目的源代码查看页 */
+function srcViewDoc(p,src){
+  return tplShell(codeViewCSS()+'.wrap{max-width:1180px}',
+    '<h1>'+escHtml(p.name)+' · 源代码</h1><div class="sub">'+
+    lineCount(src)+' 行 ｜ '+String(src).length+' 字符 ｜ 可点击「编辑代码」修改后保存。</div>'+
+    codeView(src));
+}
+
+/* 组装两种预览：效果 / 源代码 */
+let pvTab="run",pvCache={effect:"",src:""};
+async function preparePreview(p){
+  pvTab="run";
+  pvCache={effect:"",src:""};
+  if(p.kind==="local"){
+    const list=await FileDB.getFiles(p.name);
+    if(!list.length){
+      pvCache.effect=tplShell("",'<h1>'+escHtml(p.name)+'</h1><div class="sub">项目文件不存在或已被清理，请重新添加该本地项目。</div>');
+      return;
+    }
+    const html=list.find(f=>/(^|\/)index\.html?$/i.test(f.path))||list.find(f=>/\.html?$/i.test(f.path));
+    pvCache.src=await buildFileListDoc(p,list);
+    pvCache.effect=html?await buildRunDoc(html,list):noPreviewDoc(p);
+  }else{
+    const src=p.custom||(TEMPLATES[p.tpl]||TEMPLATES.readme).make(p);
+    pvCache.effect=src;
+    pvCache.src=srcViewDoc(p,src);
+  }
+}
+function applyPvTab(tab){
+  pvTab=tab;
+  document.querySelectorAll(".pv-tab").forEach(e=>e.classList.toggle("active",e.dataset.tab===tab));
+  setPreviewDoc((tab==="src")?(pvCache.src||noPreviewDoc(null)):(pvCache.effect||noPreviewDoc(null)));
+}
+
+/* ================= 项目在线预览 ================= */
+async function openPreview(p){
+  edState.proj=p;
+  document.getElementById("prevName").textContent=p.name;
+  document.getElementById("prevCat").textContent="分类："+p.cat;
+  document.getElementById("prevLang").textContent=(p.kind==="local"?"本地项目 · ":"")+p.lang+" · ★ "+p.stars;
+  document.getElementById("prevCode").style.display=isAdmin?"inline-block":"none";
+  /* 预览只写一条历史记录：浏览器后退一次 = 回到仓库列表，不会退出网站 */
+  history.pushState({page:"preview"},"","#preview");
+  setView("preview");
+  setPreviewDoc("");                 /* 先清空，避免加载期间看到上一个项目的残影 */
+  await preparePreview(p);
+  applyPvTab(pvTab);
+}
+document.querySelectorAll(".pv-tab").forEach(el=>el.onclick=()=>applyPvTab(el.dataset.tab));
+document.getElementById("prevBack").onclick=()=>{
+  if((history.state&&history.state.page)==="preview"){history.back();return;}
+  setView("main");
+};
+
+/* ================= 站内代码编辑器 ================= */
+const codeArea=document.getElementById("codeArea"),gutter=document.getElementById("gutter"),fileTree=document.getElementById("fileTree");
+let edState={proj:null,path:null,files:[]};
+let codeDirty=false;                     /* 编辑器是否有未保存的修改 */
+function updateGutter(){
+  const n=codeArea.value.split("\n").length;
+  let s="";for(let i=1;i<=n;i++)s+=i+"\n";
+  gutter.textContent=s;
+  gutter.scrollTop=codeArea.scrollTop;
+}
+codeArea.addEventListener("input",()=>{codeDirty=true;updateGutter();});
+codeArea.addEventListener("scroll",()=>{gutter.scrollTop=codeArea.scrollTop});
+codeArea.addEventListener("keydown",e=>{
+  if(e.key==="Tab"){
+    e.preventDefault();
+    const s=codeArea.selectionStart,en=codeArea.selectionEnd;
+    codeArea.value=codeArea.value.slice(0,s)+"  "+codeArea.value.slice(en);
+    codeArea.selectionStart=codeArea.selectionEnd=s+2;
+    codeDirty=true;updateGutter();
+  }
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){e.preventDefault();saveCode()}
+});
+async function openEditor(p){
+  if(!needAdmin())return;
+  codeFrom=(history.state&&history.state.page)||"main";
+  codeDirty=false;
+  edState.proj=p;edState.path=null;edState.files=[];
+  document.getElementById("codeName").textContent=p.name;
+  history.pushState({page:"code"},"","#code");
+  setView("code");
+  if(p.kind==="local"){
+    edState.files=await FileDB.getFiles(p.name);
+    const texts=edState.files.filter(f=>!f.file.type||/^text\//.test(f.file.type)||TEXT_EXT.test(f.path));
+    const list=texts.length?texts:edState.files;
+    fileTree.innerHTML='<div class="ft-title">项目文件 · '+edState.files.length+' 个</div>'+
+      list.map(f=>'<div class="ft" data-path="'+escHtml(f.path)+'">'+escHtml(f.path)+'</div>').join("");
+    fileTree.querySelectorAll(".ft").forEach(el=>el.onclick=()=>selectFile(el.dataset.path));
+    await selectFile(list.length?list[0].path:null);
+  }else{
+    fileTree.innerHTML='<div class="ft-title">模板源码</div><div class="ft active">'+escHtml(p.name)+' · 页面源码</div>';
+    codeArea.value=p.custom||(TEMPLATES[p.tpl]||TEMPLATES.readme).make(p);
+    document.getElementById("codePath").textContent="页面源码（可自由修改后保存）";
+    codeDirty=false;updateGutter();
+  }
+}
+async function selectFile(path){
+  if(!path){codeArea.value="";codeDirty=false;updateGutter();return;}
+  edState.path=path;
+  document.getElementById("codePath").textContent=path;
+  fileTree.querySelectorAll(".ft").forEach(e=>e.classList.toggle("active",e.dataset.path===path));
+  const f=edState.files.find(x=>x.path===path);
+  codeArea.value=f?await f.file.text():"";
+  codeDirty=false;updateGutter();
+}
+async function saveCode(){
+  const p=edState.proj;
+  if(!p)return;
+  const content=codeArea.value;
+  if(p.kind==="local"&&edState.path){
+    const base=edState.path.split("/").pop();
+    await FileDB.put(p.name+"|"+edState.path,new File([content],base,{type:"text/plain"}));
+    p.files=p.files||[];
+    const m=p.files.find(f=>f.path===edState.path);
+    if(m){m.size=content.length;m.type="text/plain"}else p.files.push({path:edState.path,size:content.length,type:"text/plain"});
+  }else{
+    p.custom=content;
+  }
+  p.updatedAt=todayStr();
+  saveData();
+  codeDirty=false;
+  toast("已保存 "+(edState.path||"页面源码"));
+}
+/* 自动换行开关：默认开 —— 代码按可见宽度折行，多行显示，不再挤成一条长龙。
+   关掉则恢复原来的「不折行 + 左侧行号」模式（行号只在关闭折行时准确）。
+   注意：CSS 只管渲染，textarea 还必须同步改 wrap 属性才会真正折行。 */
+let codeWrapOn=true;
+try{codeWrapOn=localStorage.getItem("misaka_code_wrap")!=="0"}catch(e){}
+function applyEditorWrap(){
+  editor.classList.toggle("wrap-on",codeWrapOn);
+  try{codeArea.wrap=codeWrapOn?"soft":"off"}catch(e){}
+  const b=document.getElementById("codeWrap");
+  if(b){b.textContent=codeWrapOn?"⇥ 自动换行：开":"⇤ 自动换行：关";b.classList.toggle("primary",codeWrapOn);}
+  try{localStorage.setItem("misaka_code_wrap",codeWrapOn?"1":"0")}catch(e){}
+}
+document.getElementById("codeWrap").onclick=()=>{codeWrapOn=!codeWrapOn;applyEditorWrap();};
+document.getElementById("codeSave").onclick=saveCode;
+document.getElementById("codeRun").onclick=async ()=>{
+  await saveCode();
+  if(edState.proj)openPreview(edState.proj);
+};
+
+/* ================= 弹窗：添加项目 / 新建分类 ================= */
+const mask=document.getElementById("modalMask");
+const fCat=document.getElementById("fCat"),fTpl=document.getElementById("fTpl");
+function fillSelects(){
+  fCat.innerHTML=CATS.filter(c=>c!=="全部").map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join("");
+  fTpl.innerHTML=Object.keys(TEMPLATES).map(k=>`<option value="${k}">${TEMPLATES[k].name}</option>`).join("");
+}
+let modalMode="proj",srcMode="local",pickedFiles=[],editingProj=null,editingCat=null;
+function setSrcTab(mode){
+  srcMode=mode;
+  document.querySelectorAll(".src-tab").forEach(e=>e.classList.toggle("active",e.dataset.src===mode));
+  document.getElementById("srcLocal").style.display=mode==="local"?"block":"none";
+  document.getElementById("srcTpl").style.display=mode==="tpl"?"block":"none";
+}
+document.querySelectorAll(".src-tab").forEach(el=>el.onclick=()=>setSrcTab(el.dataset.src));
+
+function addPicked(files,isDir){
+  pickedFiles=Array.from(files||[]);
+  const kb=pickedFiles.reduce((s,f)=>s+f.size,0);
+  document.getElementById("fileCount").innerHTML=pickedFiles.length
+    ? '已选择 <b>'+pickedFiles.length+'</b> 个文件 · '+(kb/1024).toFixed(1)+' KB'+(isDir?'（来自文件夹）':'')
+    : "尚未选择文件";
+  const fn=document.getElementById("fName");
+  if(!fn.value.trim()&&pickedFiles[0]){
+    const rel=pickedFiles[0].webkitRelativePath||"";
+    if(rel.indexOf("/")>0)fn.value=rel.split("/")[0];
+  }
+}
+function detectLang(files){
+  const map={js:"JavaScript",jsx:"JavaScript",ts:"TypeScript",tsx:"TypeScript",vue:"Vue",py:"Python",go:"Go",
+    java:"Java",c:"C",h:"C",cpp:"C++",cs:"C#",rb:"Ruby",php:"PHP",rs:"Rust",sh:"Shell",
+    html:"HTML",css:"CSS",json:"JSON",md:"Markdown"};
+  const cnt={};
+  files.forEach(f=>{
+    const ext=(f.name.split(".").pop()||"").toLowerCase();
+    const l=map[ext];if(l)cnt[l]=(cnt[l]||0)+1;
+  });
+  return Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0]||"";
+}
+document.getElementById("pickDir").onclick=()=>document.getElementById("dirInput").click();
+document.getElementById("pickFiles").onclick=()=>document.getElementById("fileInput").click();
+document.getElementById("dirInput").addEventListener("change",e=>addPicked(e.target.files,true));
+document.getElementById("fileInput").addEventListener("change",e=>addPicked(e.target.files,false));
+const dz=document.getElementById("dropzone");
+["dragenter","dragover"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add("over")}));
+["dragleave","dragend"].forEach(ev=>dz.addEventListener(ev,()=>dz.classList.remove("over")));
+dz.addEventListener("drop",e=>{e.preventDefault();dz.classList.remove("over");if(e.dataTransfer&&e.dataTransfer.files)addPicked(e.dataTransfer.files,false)});
+
+function openModal(mode,target){
+  if(mode!=="cat-edit"&&mode!=="proj-edit"&&!needAdmin())return;
+  if((mode==="cat-edit"||mode==="proj-edit")&&!needAdmin())return;
+  modalMode=mode;editingProj=(mode==="proj-edit"?target:null);
+  editingCat=(mode==="cat-edit"?target:null);
+  fillSelects();setSrcTab(mode==="proj-edit"&&target.kind!=="local"?"tpl":"local");
+  pickedFiles=[];fileEditList=[];
+  document.getElementById("fileCount").textContent="尚未选择文件";
+  document.getElementById("dirInput").value="";
+  document.getElementById("fileInput").value="";
+  document.getElementById("fContent").value="";
+  document.getElementById("fileEditBox").style.display=(mode==="proj-edit"&&target.kind==="local")?"block":"none";
+  document.getElementById("projFields").style.display=(mode==="proj"||mode==="proj-edit")?"block":"none";
+  document.getElementById("catFields").style.display=(mode==="cat"||mode==="cat-edit")?"block":"none";
+  document.getElementById("modalTitle").textContent=
+    mode==="proj"?"添加新项目":mode==="proj-edit"?"编辑项目":mode==="cat"?"新建仓库分类":"重命名分类";
+  ["fName","fDesc","fCatName","fLang"].forEach(id=>document.getElementById(id).value="");
+  if(mode==="proj-edit"){
+    document.getElementById("fName").value=target.name;
+    document.getElementById("fLang").value=target.lang||"";
+    document.getElementById("fDesc").value=target.desc||"";
+    fCat.value=target.cat;
+    if(target.tpl)fTpl.value=target.tpl;
+    if(target.kind==="local")loadFileEditList(target.name);
+  }
+  if(mode==="cat-edit")document.getElementById("fCatName").value=target;
+  mask.classList.add("show");
+  setTimeout(()=>document.getElementById(mode==="cat"||mode==="cat-edit"?"fCatName":"fName").focus(),60);
+}
+/* 编辑本地项目时：列出可直接修改内容的文件 */
+let fileEditList=[];
+async function loadFileEditList(name){
+  const list=await FileDB.getFiles(name);
+  fileEditList=list.filter(f=>(!f.file.type||/^text\//.test(f.file.type)||TEXT_EXT.test(f.path))&&f.file.size<300*1024);
+  document.getElementById("fFile").innerHTML='<option value="">（不修改文件）</option>'+
+    fileEditList.map(f=>'<option value="'+escHtml(f.path)+'">'+escHtml(f.path)+'</option>').join("");
+}
+document.getElementById("fFile").addEventListener("change",async e=>{
+  const path=e.target.value;
+  const ta=document.getElementById("fContent");
+  if(!path){ta.value="";return;}
+  const f=fileEditList.find(x=>x.path===path);
+  ta.value=f?await f.file.text():"";
+});
+document.getElementById("addProjBtn").onclick=()=>openModal("proj");
+document.getElementById("addCatBtn").onclick=()=>openModal("cat");
+document.getElementById("modalCancel").onclick=()=>mask.classList.remove("show");
+mask.addEventListener("click",e=>{if(e.target===mask)mask.classList.remove("show")});
+document.getElementById("modalOk").onclick=async ()=>{
+  /* ---------- 编辑 / 添加项目 ---------- */
+  if(modalMode==="proj"||modalMode==="proj-edit"){
+    const name=document.getElementById("fName").value.trim();
+    if(!name)return alert("请填写项目名称");
+    const desc=document.getElementById("fDesc").value.trim();
+    const lang=document.getElementById("fLang").value.trim()||
+      (pickedFiles.length?detectLang(pickedFiles):(editingProj?editingProj.lang:""))||"JavaScript";
+
+    if(modalMode==="proj-edit"){
+      const p=editingProj,oldName=p.name;
+      /* 1. 重命名：同步迁移 IndexedDB 中的文件 key */
+      if(oldName!==name&&p.kind==="local"){
+        const files=await FileDB.getFiles(oldName);
+        for(const f of files){
+          await FileDB.put(name+"|"+f.path,f.file);
+          await FileDB.del(oldName+"|"+f.path);
+        }
+        if(p.files)p.files=p.files.map(f=>f);
+      }
+      /* 2. 重新上传文件：覆盖原内容 */
+      if(srcMode==="local"&&pickedFiles.length){
+        await FileDB.clear(name);
+        const meta=[];
+        for(const f of pickedFiles){
+          let rel=f.webkitRelativePath||f.name;
+          const parts=rel.split("/");
+          if(parts.length>1)parts.shift();
+          const path=parts.join("/");
+          meta.push({path:path,size:f.size,type:f.type});
+          await FileDB.put(name+"|"+path,f);
+        }
+        p.kind="local";p.files=meta;
+      }
+      /* 3. 直接修改某个文件的内容 */
+      const editPath=document.getElementById("fFile").value;
+      if(p.kind==="local"&&editPath){
+        const content=document.getElementById("fContent").value;
+        const old=fileEditList.find(x=>x.path===editPath);
+        const base=editPath.split("/").pop();
+        const nf=new File([content],base,{type:old&&old.file.type?old.file.type:"text/plain"});
+        await FileDB.put(name+"|"+editPath,nf);
+        if(p.files){
+          const m=p.files.find(f=>f.path===editPath);
+          if(m){m.size=nf.size;m.type=nf.type}else p.files.push({path:editPath,size:nf.size,type:nf.type});
+        }
+      }
+      /* 4. 修改元信息 */
+      p.name=name;p.cat=fCat.value;p.lang=lang;
+      p.updatedAt=todayStr();
+      if(desc)p.desc=desc;
+      if(srcMode==="tpl"){
+        delete p.kind;delete p.files;
+        p.tpl=fTpl.value;
+        if(!desc)p.desc="暂无简介。";
+      }
+    }else{
+      const proj={name,cat:fCat.value,lang,stars:0,desc:"",updatedAt:todayStr()};
+      if(srcMode==="local"&&pickedFiles.length){
+        proj.kind="local";
+        const meta=[];
+        for(const f of pickedFiles){
+          let rel=f.webkitRelativePath||f.name;
+          const parts=rel.split("/");
+          if(parts.length>1)parts.shift();
+          const path=parts.join("/");
+          meta.push({path:path,size:f.size,type:f.type});
+          await FileDB.put(name+"|"+path,f);
+        }
+        proj.files=meta;
+        proj.desc=desc||("本地导入："+pickedFiles.length+" 个文件");
+      }else{
+        proj.tpl=fTpl.value;
+        proj.desc=desc||"暂无简介。";
+      }
+      PROJECTS.unshift(proj);
+      activeCat="全部";
+    }
+  /* ---------- 新建 / 重命名分类 ---------- */
+  }else{
+    const name=document.getElementById("fCatName").value.trim();
+    if(!name)return alert("请填写分类名称");
+    if(modalMode==="cat"){
+      if(CATS.includes(name))return alert("该分类已存在");
+      CATS.splice(1,0,name);
+    }else{
+      if(CATS.includes(name)&&name!==editingCat)return alert("该分类已存在");
+      CATS[CATS.indexOf(editingCat)]=name;
+      PROJECTS.forEach(p=>{if(p.cat===editingCat)p.cat=name});
+      if(activeCat===editingCat)activeCat=name;
+    }
+  }
+  saveData();renderCats();render();
+  mask.classList.remove("show");
+};
+
+/* ================= 数据导入 / 导出：换设备、备份都靠它 ================= */
+function exportData(){
+  try{
+    const blob=new Blob([JSON.stringify({version:1,projects:PROJECTS,cats:CATS},null,2)],{type:"application/json"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="misaka-lab-"+todayStr()+".json";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    toast("已导出仓库数据");
+  }catch(e){alert("导出失败："+e.message)}
+}
+async function exportAll(){
+  /* 连本地项目的文件内容一起打包（体积可能较大） */
+  try{
+    const rows=await FileDB.all();
+    const out={version:1,projects:PROJECTS,cats:CATS,files:{}};
+    for(const r of rows){
+      const i=r.key.indexOf("|");if(i<0)continue;
+      const proj=r.key.slice(0,i),path=r.key.slice(i+1);
+      (out.files[proj]=out.files[proj]||{})[path]=await r.file.text();
+    }
+    const blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="misaka-lab-full-"+todayStr()+".json";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    toast("已导出完整备份（含本地文件）");
+  }catch(e){alert("导出失败："+e.message)}
+}
+function importData(){
+  if(!needAdmin())return;
+  const inp=document.createElement("input");
+  inp.type="file";inp.accept="application/json,.json";
+  inp.onchange=async()=>{
+    const f=inp.files&&inp.files[0];if(!f)return;
+    try{
+      const d=JSON.parse(await f.text());
+      if(!d||!Array.isArray(d.projects))throw new Error("文件格式不正确");
+      if(!confirm("导入将覆盖当前仓库列表（共 "+d.projects.length+" 个项目），确定继续？"))return;
+      PROJECTS=d.projects;
+      CATS=Array.isArray(d.cats)&&d.cats.length?d.cats:["全部"];
+      if(!CATS.includes("全部"))CATS.unshift("全部");
+      activeCat="全部";keyword="";
+      document.getElementById("search").value="";
+      if(d.files){for(const proj of Object.keys(d.files)){
+        for(const path of Object.keys(d.files[proj])){
+          await FileDB.put(proj+"|"+path,new File([d.files[proj][path]],path.split("/").pop(),{type:"text/plain"}));
+        }
+      }}
+      saveData();renderCats();render();
+      toast("已导入 "+PROJECTS.length+" 个项目");
+    }catch(e){alert("导入失败："+e.message)}
+  };
+  inp.click();
+}
+
+/* 初始状态：默认只读；若本会话已解锁则保持编辑态 */
+(function init(){
+  let on=false;
+  try{on=sessionStorage.getItem("misaka_admin")==="1"}catch(e){}
+  setAdmin(on);
+  applyEditorWrap();
+  /* 触屏上没有 "/" 快捷键，把提示里的键盘说明去掉 */
+  if(window.matchMedia&&matchMedia("(hover:none)").matches){
+    const s=document.getElementById("search");
+    if(s&&s.placeholder.indexOf("/")>-1)s.placeholder="搜索项目…";
+  }
+  /* 环境自检：file:// 下 IndexedDB 与 fetch 都会被浏览器限制，必须明确告知 */
+  (async()=>{
+    const msgs=[];
+    if(location.protocol==="file:")msgs.push("当前以 file:// 打开：本地项目文件无法持久化，刷新即丢失");
+    let ok=true;
+    try{localStorage.setItem("__t","1");localStorage.removeItem("__t")}catch(e){ok=false}
+    if(!ok)msgs.push("localStorage 不可用：仓库数据无法保存");
+    const db=await FileDB.probe();
+    if(!db)msgs.push("本地文件仓库（IndexedDB）不可用：导入的项目只能临时保存在内存，刷新即丢失");
+    if(msgs.length)envWarn(msgs.join(" ｜ ")+" ｜ 请在项目目录执行 python -m http.server 8080 后用 http://localhost:8080 打开");
+  })();
+})();
+</script>
+</body>
+</html>
